@@ -1,0 +1,3 @@
+[submodule "public/vendor/rAF"]
+	path = public/vendor/rAF
+	url = git://gist.github.com/1579671.git

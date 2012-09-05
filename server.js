@@ -1,3 +1,4 @@
+var static = require('node-static');
 var app = require('http').createServer(handler);
 
 var redis = require('redis');
@@ -5,23 +6,17 @@ var sio = require('socket.io'),
     RedisStore = sio.RedisStore,
     io = sio.listen(app);
 
-var fs = require('fs');
 var config = require('./config');
 
 // http config
+var file = new(static.Server)('./public');
+
 app.listen(config.port);
 console.log('Server started, listening on port ' + config.port);
 
-function handler(req, res) {
-  fs.readFile(__dirname + '/index.html',
-  function (err, data) {
-    if (err) {
-      res.writeHead(500);
-      return res.end('Error loading index.html');
-    }
-
-    res.writeHead(200);
-    res.end(data);
+function handler (req, res) {
+  req.addListener('end', function () {
+    file.serve(req, res);
   });
 }
 
