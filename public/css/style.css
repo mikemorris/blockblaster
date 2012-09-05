@@ -1,7 +1,31 @@
 html, body {
   height: 100%;
+  margin: 0;
 }
 
 p {
   margin: 0;
+}
+
+#sidebar {
+  width: 100px;
+  height: 100%;
+  float: left;
+  background-color: pink;
+  color: white;
+}
+
+#main {
+  height: 100%;
+  padding-left: 100px;
+}
+
+#input {
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+}
+
+#data {
+  width: 100%;
 }

@@ -30,6 +30,14 @@ var game = {} || game;
     });
 
     socket.emit('user:add', prompt("What's your name?"));
+
+    /*
+    // init physics loop, fixed time step in milliseconds
+    setInterval(game.physics, 15);
+
+    // init animation loop, variable time step
+    game.loop(new Clock());
+    */
   };
 
   this.physics = function() {
@@ -51,9 +59,5 @@ var game = {} || game;
 }).apply(game);
 
 $(document).ready(function() {
-  // physics loop, fixed time step in milliseconds
-  setInterval(game.physics, 15);
-
-  // animation loop, variable time step
-  game.loop(new Clock());
+  game.init();
 });
