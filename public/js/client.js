@@ -60,6 +60,7 @@ var keymap = [
     }
   };
 
+  // TODO: replace with physics logic using dependency injection pattern
   var valid = function(command) {
     if(true) {
       return command;

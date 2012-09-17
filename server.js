@@ -1,10 +1,19 @@
-var static = require('node-static');
 var app = require('http').createServer(handler);
+
+var static = require('node-static');
+var _ = require('underscore');
 
 var redis = require('redis');
 var sio = require('socket.io'),
     RedisStore = sio.RedisStore,
     io = sio.listen(app);
+
+var state = {
+  'foo': 'bar'
+};
+
+var queue = {};
+queue.physics = [];
 
 var config = require('./config');
 
@@ -29,11 +38,47 @@ var port = config.redis.port,
 var pub = redis.createClient(port, host);
 var sub = redis.createClient(port, host);
 var store = redis.createClient(port, host);
+var rc = redis.createClient(port, host);
 
 // redis auth
 pub.auth(pass, function(err) {});
 sub.auth(pass, function(err) {});
 store.auth(pass, function(err) {});
+rc.auth(pass, function(err) {});
+
+var publishUsers = function() {
+  // publish updated user list
+  rc.smembers('users', function(err, res) {
+    // update the list of users in chat, client-side
+    io.sockets.emit('user:update', res);
+  });
+};
+
+var publishCommand = function(message) {
+  rc.hgetall(message, function(err, res) {
+    console.log(res);
+    rc.hget('user:' + res.uid, 'name', function(err, username) {
+      io.sockets.emit('command:update', username, res.text);
+    });
+  });
+};
+
+var publishState = function(state) {
+  console.log(state);
+  rc.hmset('state', state, function(err, res) {
+    console.log(res);
+    io.sockets.emit('state:update', state);
+  });
+};
+
+var publishChat = function(message) {
+  rc.hgetall(message, function(err, res) {
+    console.log(res);
+    rc.hget('user:' + res.uid, 'name', function(err, username) {
+      io.sockets.emit('chat:update', username, res.text);
+    });
+  });
+};
 
 // socket.io config
 io.configure(function() {
@@ -42,35 +87,6 @@ io.configure(function() {
 
 // socket.io client event listeners
 io.sockets.on('connection', function (socket) {
-  var rc = redis.createClient(port, host);
-  rc.auth(pass, function(err) {});
-
-  var publishUsers = function() {
-    // publish updated user list
-    rc.smembers('users', function(err, res) {
-      // update the list of users in chat, client-side
-      io.sockets.emit('user:update', res);
-    });
-  };
-
-  var publishCommand = function(message) {
-    rc.hgetall(message, function(err, res) {
-      console.log(res);
-      rc.hget('user:' + res.uid, 'name', function(err, username) {
-        io.sockets.emit('command:update', username, res.text);
-      });
-    });
-  };
-
-  var publishChat = function(message) {
-    rc.hgetall(message, function(err, res) {
-      console.log(res);
-      rc.hget('user:' + res.uid, 'name', function(err, username) {
-        io.sockets.emit('chat:update', username, res.text);
-      });
-    });
-  };
-
   socket.on('user:add', function(username) {
     // add user to redis set
     rc.incr('users:uid:next', function(err, uid) {
@@ -94,7 +110,8 @@ io.sockets.on('connection', function (socket) {
     console.log(command);
     rc.incr('commands:id:next', function(err, id) {
       rc.hmset('command:' + id, { uid: socket.uid, text: command.data }, function(err, res) {
-        publishCommand('command:' + id);
+        // add to server physics queue instead of immeadiately publishing
+        queue.physics.push({ data: 'command:' + id });
       });
     });
   })
@@ -115,3 +132,43 @@ io.sockets.on('connection', function (socket) {
     });
   });
 });
+
+// TODO: replace with physics logic using dependency injection pattern
+var valid = function(command) {
+  if(true) {
+    return command;
+  }
+};
+
+// physics loop
+var physics = function() {
+  while (queue.physics.length > 0) {
+    var command = valid(queue.physics.shift());
+
+    if (command === undefined) {
+      console.log('invalid');
+    } else {
+      console.log(command);
+
+      // TODO: push updated position to game state object instead of publishing directly
+      // updateState(command.data);
+      publishCommand(command.data);
+    }
+  }
+};
+
+// init physics loop, fixed time step in milliseconds
+setInterval(physics, 15);
+
+// update loop
+var update = function() {
+  rc.hgetall('state', function(err, res) {
+    // publish game state delta
+    if (!_.isEqual(res, state)) {
+      publishState(state);
+    }
+  });
+};
+
+// init server update loop, fixed time step in milliseconds
+setInterval(update, 45);
