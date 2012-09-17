@@ -53,6 +53,15 @@ io.sockets.on('connection', function (socket) {
     });
   };
 
+  var publishCommand = function(message) {
+    rc.hgetall(message, function(err, res) {
+      console.log(res);
+      rc.hget('user:' + res.uid, 'name', function(err, username) {
+        io.sockets.emit('command:update', username, res.text);
+      });
+    });
+  };
+
   var publishChat = function(message) {
     rc.hgetall(message, function(err, res) {
       console.log(res);
@@ -78,6 +87,14 @@ io.sockets.on('connection', function (socket) {
         io.sockets.emit('chat:update', 'SERVER', socket.username + ' has connected');
 
         publishUsers();
+      });
+    });
+  })
+  .on('command:send', function (command) {
+    console.log(command);
+    rc.incr('commands:id:next', function(err, id) {
+      rc.hmset('command:' + id, { uid: socket.uid, text: command.data }, function(err, res) {
+        publishCommand('command:' + id);
       });
     });
   })

@@ -1,60 +1,143 @@
 var game = {} || game;
 
+var keymap = [
+  {
+    'keys': {
+      'keyCode': 119,
+      'altKey': false,
+      'ctrlKey': false,
+      'shiftKey': false
+    },
+    'command': 'forward'
+  },
+  {
+    'keys': {
+      'keyCode': 97,
+      'altKey': false,
+      'ctrlKey': false,
+      'shiftKey': false
+    },
+    'command': 'left'
+  },
+  {
+    'keys': {
+      'keyCode': 115,
+      'altKey': false,
+      'ctrlKey': false,
+      'shiftKey': false
+    },
+    'command': 'reverse'
+  },
+  {
+    'keys': {
+      'keyCode': 100,
+      'altKey': false,
+      'ctrlKey': false,
+      'shiftKey': false
+    },
+    'command': 'right'
+  }
+];
+
 (function() {
-  this.init = function() {
-    var socket = io.connect();
+  var socket;
 
-    socket.on('user:update', function (data) {
-      console.log(data);
-      $('#users').empty();
-      $.each(data, function(key, value) {
-        $('#users').append('<div>' + value + '</div>');
-      });
+  var queue = {};
+  queue.physics = [];
+  queue.animation = [];
+
+  // get command from keybindings
+  var binding = function(event) {
+    var bind = _.find(keymap, function(keybind) {
+      return keybind.keys.keyCode === event.keyCode &&
+        keybind.keys.altKey === event.altKey &&
+        keybind.keys.ctrlKey === event.ctrlKey &&
+        keybind.keys.shiftKey === event.shiftKey;
     });
 
-    socket.on('chat:update', function (username, data) {
-      $('#conversation').append('<p><strong>' + username + ':</strong> ' + data + '</p>');
-    });
+    if (bind !== undefined) {
+      return bind.command;
+    }
+  };
 
-    socket.on('disconnect', function () {
-      alert('Disconnected');
-    });
+  var valid = function(command) {
+    if(true) {
+      return command;
+    }
+  };
 
-    $('#data').keypress(function(e) {
-      if(e.which == 13) {
-        var message = $('#data').val();
-        $('#data').val('');
+  var physics = function() {
+    while (queue.physics.length > 0) {
+      var command = valid(queue.physics.shift());
 
-        socket.emit('chat:send', message);
+      if (command === undefined) {
+        console.log('invalid');
+      } else {
+        console.log(command);
+        socket.emit('command:send', command);
+        queue.animation.push(command);
       }
-    });
-
-    socket.emit('user:add', prompt("What's your name?"));
-
-    /*
-    // init physics loop, fixed time step in milliseconds
-    setInterval(game.physics, 15);
-
-    // init animation loop, variable time step
-    game.loop(new Clock());
-    */
+    }
   };
 
-  this.physics = function() {
-    console.log('PHYSICS');
+  var render = function(action) {
+    var username = action.username;
+    var data = action.data;
+
+    if (username !== undefined) {
+      $('#action').html(username + ': ' + data);
+      console.log('server: ', data)
+    } else {
+      $('#action').html(data);
+      console.log('client: ', data)
+    }
   };
 
-  this.loop = function(clock) {
+  var animation = function(clock) {
     requestAnimationFrame(function() {
-      game.loop(clock);
+      animation(clock);
     });
 
     if(clock) {
       clock.tick();
 
       // time in milliseconds since last frame
-      console.log('dt: ', clock.dt);
+      // console.log('dt: ', clock.dt);
+
+      // process animation queue
+      while (queue.animation.length > 0) {
+        var action = queue.animation.shift();
+        render(action);
+      }
     }
+  };
+
+  this.init = function() {
+    socket = io.connect();
+
+    socket.on('chat:update', function (username, data) {
+      $('#conversation').append('<p><strong>' + username + ':</strong> ' + data + '</p>');
+    });
+
+    socket.on('command:update', function (username, data) {
+      queue.animation.push({ data: data, username: username });
+    });
+
+    $(document).keypress(function(event) {
+      var command = binding(event);
+
+      if (command !== undefined) {
+        queue.physics.push({ data: command });
+      }
+    });
+
+    socket.emit('user:add', prompt("What's your name?"));
+
+    // init physics loop, fixed time step in milliseconds
+    setInterval(physics, 15);
+
+    // init animation loop, variable time step
+    animation(new Clock());
   };
 }).apply(game);
 
