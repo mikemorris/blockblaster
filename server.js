@@ -38,26 +38,24 @@ var port = config.redis.port,
 var pub = redis.createClient(port, host);
 var sub = redis.createClient(port, host);
 var store = redis.createClient(port, host);
-var rc = redis.createClient(port, host);
 
 // redis auth
 pub.auth(pass, function(err) {});
 sub.auth(pass, function(err) {});
 store.auth(pass, function(err) {});
-rc.auth(pass, function(err) {});
 
 var publishUsers = function() {
   // publish updated user list
-  rc.smembers('users', function(err, res) {
+  store.smembers('users', function(err, res) {
     // update the list of users in chat, client-side
     io.sockets.emit('user:update', res);
   });
 };
 
 var publishCommand = function(message) {
-  rc.hgetall(message, function(err, res) {
+  store.hgetall(message, function(err, res) {
     console.log(res);
-    rc.hget('user:' + res.uid, 'name', function(err, username) {
+    store.hget('user:' + res.uid, 'name', function(err, username) {
       io.sockets.emit('command:update', username, res.text);
     });
   });
@@ -65,16 +63,16 @@ var publishCommand = function(message) {
 
 var publishState = function(state) {
   console.log(state);
-  rc.hmset('state', state, function(err, res) {
+  store.hmset('state', state, function(err, res) {
     console.log(res);
     io.sockets.emit('state:update', state);
   });
 };
 
 var publishChat = function(message) {
-  rc.hgetall(message, function(err, res) {
+  store.hgetall(message, function(err, res) {
     console.log(res);
-    rc.hget('user:' + res.uid, 'name', function(err, username) {
+    store.hget('user:' + res.uid, 'name', function(err, username) {
       io.sockets.emit('chat:update', username, res.text);
     });
   });
@@ -87,6 +85,9 @@ io.configure(function() {
 
 // socket.io client event listeners
 io.sockets.on('connection', function (socket) {
+  var rc = redis.createClient(port, host);
+  rc.auth(pass, function(err) {});
+
   socket.on('user:add', function(username) {
     // add user to redis set
     rc.incr('users:uid:next', function(err, uid) {
@@ -162,7 +163,7 @@ setInterval(physics, 15);
 
 // update loop
 var update = function() {
-  rc.hgetall('state', function(err, res) {
+  store.hgetall('state', function(err, res) {
     // publish game state delta
     if (!_.isEqual(res, state)) {
       publishState(state);
