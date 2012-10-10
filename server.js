@@ -62,13 +62,6 @@ var publishCommand = function(message) {
   });
 };
 
-var publishState = function(state) {
-  console.log('state: ', state);
-  store.hmset('state', state, function(err, res) {
-    io.sockets.emit('state:update', state);
-  });
-};
-
 var publishChat = function(message) {
   store.hgetall(message, function(err, res) {
     console.log(res);
@@ -82,6 +75,42 @@ var publishChat = function(message) {
 io.configure(function() {
   io.set('store', new RedisStore({ redisPub: pub, redisSub: sub, redisClient: store }));
 });
+
+store.multi()
+  .get('state:x')
+  .get('state:y')
+  .exec(function(err, res) {
+    if(err) { throw err; }
+
+    if(res[0] === null || res[1] === null) {
+      var initState = store.multi();
+
+      if(res[0] === null) {
+        initState.set('state:x', state.x)
+      }
+
+      if(res[1] === null) {
+        initState.set('state:y', state.y)
+      }
+
+      initState.exec(function(err, res) {
+        io.sockets.emit('state:update', state);
+      });
+    }
+
+    // state exists in redis
+    else {
+      console.log(res);
+
+      var x = res[0];
+      var y = res[1];
+
+      state.x = x;
+      state.y = y;
+
+      io.sockets.emit('state:update', state);
+    }
+  });
 
 // socket.io client event listeners
 io.sockets.on('connection', function (socket) {
@@ -112,33 +141,34 @@ io.sockets.on('connection', function (socket) {
   .on('command:send', function (command) {
     console.log(command);
     rc.incr('commands:id:next', function(err, id) {
-      rc.hmset('command:' + id, { uid: socket.uid, text: command.data }, function(err, res) {
+      console.log('commands:id:next '+ id);
+      console.log(socket.uid);
+      console.log(command.data);
+
+      // TODO: integer.toString() fixes regression in node_redis 0.8.1
+      rc.hmset('command:' + id, { uid: socket.uid.toString(), text: command.data }, function(err, res) {
+        if(err) { throw err; }
+
+        console.log('command:'+ id + ' '+ res);
+
         // add to server physics queue instead of immeadiately publishing
         queue.physics.push({ data: 'command:' + id });
-      });
 
-      switch(command.data) {
-        case 'forward':
-          rc.incr('state:x', function(err, id) {
-            state.x++;
-          });
-          break;
-        case 'reverse':
-          rc.decr('state:x', function(err, id) {
-            state.x--;
-          });
-          break;
-        case 'left':
-          rc.incr('state:y', function(err, id) {
-            state.y++;
-          });
-          break;
-        case 'right':
-          rc.decr('state:y', function(err, id) {
-            state.y--;
-          });
-          break;
-      }
+        switch(command.data) {
+          case 'forward':
+            rc.incr('state:x', function(err, id) { state.x++; });
+            break;
+          case 'reverse':
+            rc.decr('state:x', function(err, id) { state.x--; });
+            break;
+          case 'left':
+            rc.incr('state:y', function(err, id) { state.y++; });
+            break;
+          case 'right':
+            rc.decr('state:y', function(err, id) { state.y--; });
+            break;
+        }
+      });
     });
   })
   .on('chat:send', function (data) {
@@ -188,17 +218,26 @@ setInterval(physics, 15);
 
 // update loop
 var update = function() {
-  store.hgetall('state', function(err, res) {
-    // publish game state
-    // TODO: delta
-    if (!_.isEqual(res, state)) {
-      if (res.x != state.x || res.y != state.y) {
+  store.multi()
+    .get('state:x')
+    .get('state:y')
+    .exec(function(err, res) {
+      var x = res[0];
+      var y = res[1];
+
+      // publish full state if changed
+      // TODO: publish delta state
+      if(x != state.x || y != state.y) {
+        console.log(x);
+        console.log(y);
+
+        console.log(state.x);
+        console.log(state.y);
+
         console.log(res);
-        console.log(state);
-        publishState(state);
+        io.sockets.emit('state:update', state);
       }
-    }
-  });
+    });
 };
 
 // init server update loop, fixed time step in milliseconds
