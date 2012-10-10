@@ -1,5 +1,5 @@
 {
-  "name": "box2d-redis",
+  "name": "redisgame",
   "subdomain": "nclud",
   "scripts": {
     "start": "server.js"
