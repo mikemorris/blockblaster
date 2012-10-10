@@ -76,6 +76,42 @@ io.configure(function() {
   io.set('store', new RedisStore({ redisPub: pub, redisSub: sub, redisClient: store }));
 });
 
+store.multi()
+  .get('state:x')
+  .get('state:y')
+  .exec(function(err, res) {
+    if(err) { throw err; }
+
+    if(res[0] === null || res[1] === null) {
+      var initState = store.multi();
+
+      if(res[0] === null) {
+        initState.set('state:x', state.x)
+      }
+
+      if(res[1] === null) {
+        initState.set('state:y', state.y)
+      }
+
+      initState.exec(function(err, res) {
+        io.sockets.emit('state:update', state);
+      });
+    }
+
+    // state exists in redis
+    else {
+      console.log(res);
+
+      var x = res[0];
+      var y = res[1];
+
+      state.x = x;
+      state.y = y;
+
+      io.sockets.emit('state:update', state);
+    }
+  });
+
 // socket.io client event listeners
 io.sockets.on('connection', function (socket) {
   var rc = redis.createClient(port, host);
@@ -93,8 +129,6 @@ io.sockets.on('connection', function (socket) {
       .exec(function(err, res) {
         // store the username and uid in the socket session for this client
         socket.username = username;
-
-        // TODO: store this in redis to not crash on resuming interrupted sessions
         socket.uid = uid;
 
         // echo globally (all clients) that a person has connected
@@ -122,16 +156,16 @@ io.sockets.on('connection', function (socket) {
 
         switch(command.data) {
           case 'forward':
-            rc.incr('state:x', function(err, id) { state.x++; });
+            rc.incr('state:x', function(err, id) {});
             break;
           case 'reverse':
-            rc.decr('state:x', function(err, id) { state.x--; });
+            rc.decr('state:x', function(err, id) {});
             break;
           case 'left':
-            rc.incr('state:y', function(err, id) { state.y++; });
+            rc.incr('state:y', function(err, id) {});
             break;
           case 'right':
-            rc.decr('state:y', function(err, id) { state.y--; });
+            rc.decr('state:y', function(err, id) {});
             break;
         }
       });
@@ -155,79 +189,57 @@ io.sockets.on('connection', function (socket) {
   });
 });
 
-store.on('ready', function(err, res) {
-  var initState = store.multi();
-  store.get('state:x', function(err, res) {
-    if(res === null) {
-      store.set('state:x', state.x);
+// TODO: replace with physics logic using dependency injection pattern
+var valid = function(command) {
+  if(true) {
+    return command;
+  }
+};
+
+// physics loop
+var physics = function() {
+  while (queue.physics.length > 0) {
+    var command = valid(queue.physics.shift());
+
+    if (command === undefined) {
+      console.log('invalid');
     } else {
-      state.x = res;
+      console.log(command);
+
+      // TODO: push updated position to game state object instead of publishing directly
+      // updateState(command.data);
+      publishCommand(command.data);
     }
+  }
+};
 
-    io.sockets.emit('state:update', state);
-  });
+// init physics loop, fixed time step in milliseconds
+setInterval(physics, 15);
 
-  store.get('state:y', function(err, res) {
-    if(res === null) {
-      store.set('state:y', state.y);
-    } else {
-      state.y = res;
-    }
+// update loop
+var update = function() {
+  store.multi()
+    .get('state:x')
+    .get('state:y')
+    .exec(function(err, res) {
+      var x = res[0];
+      var y = res[1];
 
-    io.sockets.emit('state:update', state);
-  });
+      // publish full state if changed
+      // TODO: publish delta state
+      if(x != state.x || y != state.y) {
+        console.log(res);
 
-  // TODO: replace with physics logic using dependency injection pattern
-  var valid = function(command) {
-    if(true) {
-      return command;
-    }
-  };
+        console.log(state.x);
+        console.log(state.y);
 
-  // physics loop
-  var physics = function() {
-    while (queue.physics.length > 0) {
-      var command = valid(queue.physics.shift());
+        state.x = x;
+        state.y = y;
 
-      if (command === undefined) {
-        console.log('invalid');
-      } else {
-        console.log(command);
-
-        // TODO: push updated position to game state object instead of publishing directly
-        // updateState(command.data);
-        publishCommand(command.data);
+        io.sockets.emit('state:update', state);
       }
-    }
-  };
+    });
+};
 
-  // init physics loop, fixed time step in milliseconds
-  setInterval(physics, 15);
-
-  // update loop
-  var update = function() {
-    store.multi()
-      .get('state:x')
-      .get('state:y')
-      .exec(function(err, res) {
-        var x = res[0];
-        var y = res[1];
-
-        // publish full state if changed
-        // TODO: publish delta state
-        if(x != state.x || y != state.y) {
-          console.log(x);
-          console.log(y);
-
-          console.log(state.x);
-          console.log(state.y);
-
-          console.log(res);
-          io.sockets.emit('state:update', state);
-        }
-      });
-  };
-
-  // init server update loop, fixed time step in milliseconds
-  setInterval(update, 45);
-});
+// init server update loop, fixed time step in milliseconds
+setInterval(update, 45);

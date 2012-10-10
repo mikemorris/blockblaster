@@ -77,7 +77,7 @@ var keymap = [
       var command = valid(queue.physics.shift());
 
       if (command === undefined) {
-        console.log('invalid');
+        // console.log('invalid');
       } else {
         switch(command.data) {
           case 'forward':
@@ -97,7 +97,7 @@ var keymap = [
         //queue.animation.push(command);
         queue.animation.push({ state: state });
 
-        console.log(command);
+        // console.log(command);
         socket.emit('command:send', command);
       }
     }
@@ -115,13 +115,13 @@ var keymap = [
     // authoritative, data from server
     if (username !== undefined) {
       $('#action').html(username + ': ' + data);
-      console.log('server: ', data)
+      // console.log('server: ', data)
     }
 
     // prosepctive, data from client
     else {
       $('#action').html(data);
-      console.log('client: ', state)
+      // console.log('client: ', state)
     }
   };
 
@@ -156,14 +156,14 @@ var keymap = [
     });
 
     socket.on('state:update', function (data) {
-      console.log(data);
+      // console.log(data);
       state = data;
       queue.animation.push({ state: state });
     });
 
     // keybindings
     $(document).keydown(function(event) {
-      console.log(event);
+      // console.log(event);
       var command = binding(event);
 
       if (command !== undefined) {
