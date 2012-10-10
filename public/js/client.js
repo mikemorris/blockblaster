@@ -3,7 +3,7 @@ var game = {} || game;
 var keymap = [
   {
     'keys': {
-      'keyCode': 119,
+      'keyCode': 87,
       'altKey': false,
       'ctrlKey': false,
       'shiftKey': false
@@ -12,7 +12,7 @@ var keymap = [
   },
   {
     'keys': {
-      'keyCode': 97,
+      'keyCode': 65,
       'altKey': false,
       'ctrlKey': false,
       'shiftKey': false
@@ -21,7 +21,7 @@ var keymap = [
   },
   {
     'keys': {
-      'keyCode': 115,
+      'keyCode': 83,
       'altKey': false,
       'ctrlKey': false,
       'shiftKey': false
@@ -30,7 +30,7 @@ var keymap = [
   },
   {
     'keys': {
-      'keyCode': 100,
+      'keyCode': 68,
       'altKey': false,
       'ctrlKey': false,
       'shiftKey': false
@@ -41,6 +41,11 @@ var keymap = [
 
 (function() {
   var socket;
+
+  var state = {
+    x: 0,
+    y: 0
+  };
 
   var queue = {};
   queue.physics = [];
@@ -74,9 +79,26 @@ var keymap = [
       if (command === undefined) {
         console.log('invalid');
       } else {
+        switch(command.data) {
+          case 'forward':
+            state.x++;
+            break;
+          case 'reverse':
+            state.x--;
+            break;
+          case 'left':
+            state.y++;
+            break;
+          case 'right':
+            state.y--;
+            break;
+        }
+
+        //queue.animation.push(command);
+        queue.animation.push({ state: state });
+
         console.log(command);
         socket.emit('command:send', command);
-        queue.animation.push(command);
       }
     }
   };
@@ -84,13 +106,22 @@ var keymap = [
   var render = function(action) {
     var username = action.username;
     var data = action.data;
+    var state = action.state;
 
+    if (state) {
+      $('#panel').css({transform: 'rotateX('+ state.x +'deg) rotateY('+ state.y +'deg)'});
+    }
+
+    // authoritative, data from server
     if (username !== undefined) {
       $('#action').html(username + ': ' + data);
       console.log('server: ', data)
-    } else {
+    }
+
+    // prosepctive, data from client
+    else {
       $('#action').html(data);
-      console.log('client: ', data)
+      console.log('client: ', state)
     }
   };
 
@@ -124,13 +155,36 @@ var keymap = [
       queue.animation.push({ data: data, username: username });
     });
 
-    $(document).keypress(function(event) {
+    socket.on('state:update', function (data) {
+      console.log(data);
+      state = data;
+      queue.animation.push({ state: state });
+    });
+
+    // keybindings
+    $(document).keydown(function(event) {
+      console.log(event);
       var command = binding(event);
 
       if (command !== undefined) {
         queue.physics.push({ data: command });
       }
     });
+
+    window.ondeviceorientation = function(event) {
+      var a = event.alpha;
+      var b = event.beta;
+      var g = event.gamma;
+
+      // add plus sign to string for positive numbers
+      if(a >= 0) { a = '+' + a}
+      if(b >= 0) { b = '+' + b}
+      if(g >= 0) { g = '+' + g}
+      
+      $('#gyroscope .alpha .value').text(a);
+      $('#gyroscope .beta .value').text(b);
+      $('#gyroscope .gamma .value').text(g);
+    }
 
     socket.emit('user:add', prompt("What's your name?"));
 

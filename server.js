@@ -9,7 +9,8 @@ var sio = require('socket.io'),
     io = sio.listen(app);
 
 var state = {
-  'foo': 'bar'
+  x: 0,
+  y: 0
 };
 
 var queue = {};
@@ -62,9 +63,8 @@ var publishCommand = function(message) {
 };
 
 var publishState = function(state) {
-  console.log(state);
+  console.log('state: ', state);
   store.hmset('state', state, function(err, res) {
-    console.log(res);
     io.sockets.emit('state:update', state);
   });
 };
@@ -87,6 +87,8 @@ io.configure(function() {
 io.sockets.on('connection', function (socket) {
   var rc = redis.createClient(port, host);
   rc.auth(pass, function(err) {});
+
+  io.sockets.emit('state:update', state);
 
   socket.on('user:add', function(username) {
     // add user to redis set
@@ -114,6 +116,29 @@ io.sockets.on('connection', function (socket) {
         // add to server physics queue instead of immeadiately publishing
         queue.physics.push({ data: 'command:' + id });
       });
+
+      switch(command.data) {
+        case 'forward':
+          rc.incr('state:x', function(err, id) {
+            state.x++;
+          });
+          break;
+        case 'reverse':
+          rc.decr('state:x', function(err, id) {
+            state.x--;
+          });
+          break;
+        case 'left':
+          rc.incr('state:y', function(err, id) {
+            state.y++;
+          });
+          break;
+        case 'right':
+          rc.decr('state:y', function(err, id) {
+            state.y--;
+          });
+          break;
+      }
     });
   })
   .on('chat:send', function (data) {
@@ -164,9 +189,14 @@ setInterval(physics, 15);
 // update loop
 var update = function() {
   store.hgetall('state', function(err, res) {
-    // publish game state delta
+    // publish game state
+    // TODO: delta
     if (!_.isEqual(res, state)) {
-      publishState(state);
+      if (res.x != state.x || res.y != state.y) {
+        console.log(res);
+        console.log(state);
+        publishState(state);
+      }
     }
   });
 };
