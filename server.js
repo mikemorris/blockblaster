@@ -155,78 +155,79 @@ io.sockets.on('connection', function (socket) {
   });
 });
 
-// TODO: replace with physics logic using dependency injection pattern
-var valid = function(command) {
-  if(true) {
-    return command;
-  }
-};
-
-// TODO: consolidate, DRY
-var initState = store.multi();
-store.get('state:x', function(err, res) {
-  if(res === null) {
-    store.set('state:x', state.x);
-  } else {
-    state.x = res;
-  }
-
-  io.sockets.emit('state:update', state);
-});
-
-store.get('state:y', function(err, res) {
-  if(res === null) {
-    store.set('state:y', state.y);
-  } else {
-    state.y = res;
-  }
-
-  io.sockets.emit('state:update', state);
-});
-
-// physics loop
-var physics = function() {
-  while (queue.physics.length > 0) {
-    var command = valid(queue.physics.shift());
-
-    if (command === undefined) {
-      console.log('invalid');
+store.on('ready', function(err, res) {
+  var initState = store.multi();
+  store.get('state:x', function(err, res) {
+    if(res === null) {
+      store.set('state:x', state.x);
     } else {
-      console.log(command);
-
-      // TODO: push updated position to game state object instead of publishing directly
-      // updateState(command.data);
-      publishCommand(command.data);
+      state.x = res;
     }
-  }
-};
 
-// init physics loop, fixed time step in milliseconds
-setInterval(physics, 15);
+    io.sockets.emit('state:update', state);
+  });
 
-// update loop
-var update = function() {
-  store.multi()
-    .get('state:x')
-    .get('state:y')
-    .exec(function(err, res) {
-      var x = res[0];
-      var y = res[1];
+  store.get('state:y', function(err, res) {
+    if(res === null) {
+      store.set('state:y', state.y);
+    } else {
+      state.y = res;
+    }
 
-      // publish full state if changed
-      // TODO: publish delta state
-      if(x != state.x || y != state.y) {
-        console.log(x);
-        console.log(y);
+    io.sockets.emit('state:update', state);
+  });
 
-        console.log(state.x);
-        console.log(state.y);
+  // TODO: replace with physics logic using dependency injection pattern
+  var valid = function(command) {
+    if(true) {
+      return command;
+    }
+  };
 
-        console.log(res);
-        io.sockets.emit('state:update', state);
+  // physics loop
+  var physics = function() {
+    while (queue.physics.length > 0) {
+      var command = valid(queue.physics.shift());
+
+      if (command === undefined) {
+        console.log('invalid');
+      } else {
+        console.log(command);
+
+        // TODO: push updated position to game state object instead of publishing directly
+        // updateState(command.data);
+        publishCommand(command.data);
       }
-    });
-};
+    }
+  };
 
-// init server update loop, fixed time step in milliseconds
-setInterval(update, 45);
+  // init physics loop, fixed time step in milliseconds
+  setInterval(physics, 15);
+
+  // update loop
+  var update = function() {
+    store.multi()
+      .get('state:x')
+      .get('state:y')
+      .exec(function(err, res) {
+        var x = res[0];
+        var y = res[1];
+
+        // publish full state if changed
+        // TODO: publish delta state
+        if(x != state.x || y != state.y) {
+          console.log(x);
+          console.log(y);
+
+          console.log(state.x);
+          console.log(state.y);
+
+          console.log(res);
+          io.sockets.emit('state:update', state);
+        }
+      });
+  };
+
+  // init server update loop, fixed time step in milliseconds
+  setInterval(update, 45);
+});
