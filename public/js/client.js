@@ -186,6 +186,21 @@ var keymap = [
       $('#gyroscope .gamma .value').text(g);
     }
 
+    window.ondevicemotion = function(event) {
+      var x = Math.round(event.acceleration.x);
+      var y = Math.round(event.acceleration.y);
+      var z = Math.round(event.acceleration.z);
+
+      // add plus sign to string for positive numbers
+      if(x >= 0) { x = '+' + x}
+      if(y >= 0) { y = '+' + y}
+      if(z >= 0) { z = '+' + z}
+      
+      $('#accelerometer .x .value').text(x);
+      $('#accelerometer .y .value').text(y);
+      $('#accelerometer .z .value').text(z);
+    }
+
     socket.emit('user:add', prompt("What's your name?"));
 
     // init physics loop, fixed time step in milliseconds

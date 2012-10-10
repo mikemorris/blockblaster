@@ -38,3 +38,9 @@ p {
   bottom: 0;
   left: 0;
 }
+
+#accelerometer {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+}
