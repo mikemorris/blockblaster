@@ -172,9 +172,9 @@ var keymap = [
     });
 
     window.ondeviceorientation = function(event) {
-      var a = event.alpha;
-      var b = event.beta;
-      var g = event.gamma;
+      var a = Math.round(event.alpha);
+      var b = Math.round(event.beta);
+      var g = Math.round(event.gamma);
 
       // add plus sign to string for positive numbers
       if(a >= 0) { a = '+' + a}
