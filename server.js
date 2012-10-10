@@ -76,42 +76,6 @@ io.configure(function() {
   io.set('store', new RedisStore({ redisPub: pub, redisSub: sub, redisClient: store }));
 });
 
-store.multi()
-  .get('state:x')
-  .get('state:y')
-  .exec(function(err, res) {
-    if(err) { throw err; }
-
-    if(res[0] === null || res[1] === null) {
-      var initState = store.multi();
-
-      if(res[0] === null) {
-        initState.set('state:x', state.x)
-      }
-
-      if(res[1] === null) {
-        initState.set('state:y', state.y)
-      }
-
-      initState.exec(function(err, res) {
-        io.sockets.emit('state:update', state);
-      });
-    }
-
-    // state exists in redis
-    else {
-      console.log(res);
-
-      var x = res[0];
-      var y = res[1];
-
-      state.x = x;
-      state.y = y;
-
-      io.sockets.emit('state:update', state);
-    }
-  });
-
 // socket.io client event listeners
 io.sockets.on('connection', function (socket) {
   var rc = redis.createClient(port, host);
@@ -129,6 +93,8 @@ io.sockets.on('connection', function (socket) {
       .exec(function(err, res) {
         // store the username and uid in the socket session for this client
         socket.username = username;
+
+        // TODO: store this in redis to not crash on resuming interrupted sessions
         socket.uid = uid;
 
         // echo globally (all clients) that a person has connected
@@ -195,6 +161,28 @@ var valid = function(command) {
     return command;
   }
 };
+
+// TODO: consolidate, DRY
+var initState = store.multi();
+store.get('state:x', function(err, res) {
+  if(res === null) {
+    store.set('state:x', state.x);
+  } else {
+    state.x = res;
+  }
+
+  io.sockets.emit('state:update', state);
+});
+
+store.get('state:y', function(err, res) {
+  if(res === null) {
+    store.set('state:y', state.y);
+  } else {
+    state.y = res;
+  }
+
+  io.sockets.emit('state:update', state);
+});
 
 // physics loop
 var physics = function() {
