@@ -39,6 +39,29 @@ var keymap = [
   }
 ];
 
+var map = [
+  {
+    'axis': 'b',
+    'positive': false,
+    'command': 'forward'
+  },
+  {
+    'axis': 'b',
+    'positive': true,
+    'command': 'reverse'
+  },
+  {
+    'axis': 'g',
+    'positive': false,
+    'command': 'left'
+  },
+  {
+    'axis': 'g',
+    'positive': true,
+    'command': 'right'
+  }
+];
+
 (function() {
   var socket;
 
@@ -47,7 +70,11 @@ var keymap = [
     y: 0
   };
 
+  var gyroscope;
+  var accelerometer;
+
   var queue = {};
+  queue.move = [];
   queue.physics = [];
   queue.animation = [];
 
@@ -65,6 +92,47 @@ var keymap = [
     }
   };
 
+  // get command from motion bindings
+  var motion = function() {
+    var last = queue.move.length - 1;
+    var now = queue.move[0].gyroscope;
+    var old = queue.move[last].gyroscope;
+
+    var delta = [
+      {
+        key: 'a',
+        value: now.alpha - old.alpha
+      },
+      {
+        key: 'b',
+        value: now.beta - old.beta
+      },
+      {
+        key: 'g',
+        value: now.gamma - old.gamma
+      }
+    ];
+
+    var max = _.max(delta, function(axis) {
+      var abs = Math.abs(axis.value);
+
+      if (abs > 1) {
+        return abs;
+      }
+    });
+
+    if (max !== undefined) {
+      var bind = _.find(map, function(binding) {
+        return binding.axis === max.key &&
+          binding.positive === (max.value > 0);
+      });
+
+      if (bind !== undefined) {
+        return bind.command;
+      }
+    }
+  };
+
   // TODO: replace with physics logic using dependency injection pattern
   var valid = function(command) {
     if(true) {
@@ -73,12 +141,65 @@ var keymap = [
   };
 
   var physics = function() {
+    if (gyroscope && accelerometer) {
+      // create move object and add to physics queue
+      var move = {
+        time: Date.now(),
+        gyroscope: gyroscope,
+        accelerometer: accelerometer,
+        state: state
+      };
+
+      // add move to queue, then trim queue to max size
+      queue.move.unshift(move);
+      queue.move = queue.move.slice(0, 10);
+
+      // if motion, send command
+      var command = motion();
+      if (command !== undefined) {
+        queue.physics.push({ data: command });
+      }
+
+      // update gyroscope display
+      var a = Math.round(gyroscope.alpha);
+      var b = Math.round(gyroscope.beta);
+      var g = Math.round(gyroscope.gamma);
+
+      // add plus sign to string for positive numbers
+      if(a >= 0) { a = '+' + a}
+      if(b >= 0) { b = '+' + b}
+      if(g >= 0) { g = '+' + g}
+      
+      $('#gyroscope .alpha .value').text(a);
+      $('#gyroscope .beta .value').text(b);
+      $('#gyroscope .gamma .value').text(g);
+
+      // update accelerometer display
+      var x = Math.round(accelerometer.acceleration.x);
+      var y = Math.round(accelerometer.acceleration.y);
+      var z = Math.round(accelerometer.acceleration.z);
+
+      // add plus sign to string for positive numbers
+      if(x >= 0) { x = '+' + x}
+      if(y >= 0) { y = '+' + y}
+      if(z >= 0) { z = '+' + z}
+      
+      $('#accelerometer .x .value').text(x);
+      $('#accelerometer .y .value').text(y);
+      $('#accelerometer .z .value').text(z);
+
+      // sample high-frequency gyroscope and accelerometer data
+      var str = '';
+      for (var i = 0; i < queue.move.length; i++) {
+        str += '<p>' + Math.round(queue.move[i].gyroscope.beta) + '</p>';
+      }
+      $('#conversation').html(str);
+    }
+
     while (queue.physics.length > 0) {
       var command = valid(queue.physics.shift());
 
-      if (command === undefined) {
-        // console.log('invalid');
-      } else {
+      if (command !== undefined) {
         switch(command.data) {
           case 'forward':
             state.x++;
@@ -156,12 +277,12 @@ var keymap = [
     });
 
     socket.on('state:update', function (data) {
-      // console.log(data);
       state = data;
       queue.animation.push({ state: state });
     });
 
     // keybindings
+    // TODO: switch input methods from push to pull?
     $(document).keydown(function(event) {
       // console.log(event);
       var command = binding(event);
@@ -172,36 +293,14 @@ var keymap = [
     });
 
     window.ondeviceorientation = function(event) {
-      var a = Math.round(event.alpha);
-      var b = Math.round(event.beta);
-      var g = Math.round(event.gamma);
-
-      // add plus sign to string for positive numbers
-      if(a >= 0) { a = '+' + a}
-      if(b >= 0) { b = '+' + b}
-      if(g >= 0) { g = '+' + g}
-      
-      $('#gyroscope .alpha .value').text(a);
-      $('#gyroscope .beta .value').text(b);
-      $('#gyroscope .gamma .value').text(g);
+      gyroscope = event;
     }
 
     window.ondevicemotion = function(event) {
-      var x = Math.round(event.acceleration.x);
-      var y = Math.round(event.acceleration.y);
-      var z = Math.round(event.acceleration.z);
-
-      // add plus sign to string for positive numbers
-      if(x >= 0) { x = '+' + x}
-      if(y >= 0) { y = '+' + y}
-      if(z >= 0) { z = '+' + z}
-      
-      $('#accelerometer .x .value').text(x);
-      $('#accelerometer .y .value').text(y);
-      $('#accelerometer .z .value').text(z);
+      accelerometer = event;
     }
 
-    socket.emit('user:add', prompt("What's your name?"));
+    socket.emit('user:add', 'You');
 
     // init physics loop, fixed time step in milliseconds
     setInterval(physics, 15);
