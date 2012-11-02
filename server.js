@@ -100,13 +100,13 @@ store.multi()
 
     // state exists in redis
     else {
-      console.log(res);
-
       var x = res[0];
       var y = res[1];
 
       state.x = x;
       state.y = y;
+
+      console.log('state: ', state);
 
       io.sockets.emit('state:update', state);
     }
@@ -139,11 +139,11 @@ io.sockets.on('connection', function (socket) {
     });
   })
   .on('command:send', function (command) {
-    console.log(command);
+    console.log('command: ', command);
     rc.incr('commands:id:next', function(err, id) {
       console.log('commands:id:next '+ id);
-      console.log(socket.uid);
-      console.log(command.data);
+      console.log('socket.uid: ', socket.uid);
+      console.log('command.data: ', command.data);
 
       // TODO: integer.toString() fixes regression in node_redis 0.8.1
       rc.hmset('command:' + id, { uid: socket.uid.toString(), text: command.data }, function(err, res) {
@@ -198,12 +198,11 @@ var valid = function(command) {
 
 // physics loop
 var physics = function() {
+  // TODO: is this causing flooding from server to clients?
   while (queue.physics.length > 0) {
     var command = valid(queue.physics.shift());
 
-    if (command === undefined) {
-      console.log('invalid');
-    } else {
+    if (command !== undefined) {
       console.log(command);
 
       // TODO: push updated position to game state object instead of publishing directly
@@ -214,7 +213,7 @@ var physics = function() {
 };
 
 // init physics loop, fixed time step in milliseconds
-setInterval(physics, 15);
+// setInterval(physics, 15);
 
 // update loop
 var update = function() {
@@ -228,13 +227,10 @@ var update = function() {
       // publish full state if changed
       // TODO: publish delta state
       if(x != state.x || y != state.y) {
-        console.log(res);
-
-        console.log(state.x);
-        console.log(state.y);
-
         state.x = x;
         state.y = y;
+
+        console.log('state: ', state);
 
         io.sockets.emit('state:update', state);
       }

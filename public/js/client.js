@@ -42,12 +42,12 @@ var keymap = [
 var map = [
   {
     'axis': 'b',
-    'positive': false,
+    'positive': true,
     'command': 'forward'
   },
   {
     'axis': 'b',
-    'positive': true,
+    'positive': false,
     'command': 'reverse'
   },
   {
@@ -187,13 +187,6 @@ var map = [
       $('#accelerometer .x .value').text(x);
       $('#accelerometer .y .value').text(y);
       $('#accelerometer .z .value').text(z);
-
-      // sample high-frequency gyroscope and accelerometer data
-      var str = '';
-      for (var i = 0; i < queue.move.length; i++) {
-        str += '<p>' + Math.round(queue.move[i].gyroscope.beta) + '</p>';
-      }
-      $('#conversation').html(str);
     }
 
     while (queue.physics.length > 0) {
