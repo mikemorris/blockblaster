@@ -139,7 +139,10 @@ io.sockets.on('connection', function (socket) {
     });
   })
   .on('command:send', function (command) {
-    console.log('command: ', command);
+    // add to server physics queue instead of immeadiately publishing
+    queue.physics.push(command);
+
+    /*
     rc.incr('commands:id:next', function(err, id) {
       console.log('commands:id:next '+ id);
       console.log('socket.uid: ', socket.uid);
@@ -150,26 +153,9 @@ io.sockets.on('connection', function (socket) {
         if(err) { throw err; }
 
         console.log('command:'+ id + ' '+ res);
-
-        // add to server physics queue instead of immeadiately publishing
-        queue.physics.push({ data: 'command:' + id });
-
-        switch(command.data) {
-          case 'forward':
-            rc.incr('state:x', function(err, id) {});
-            break;
-          case 'reverse':
-            rc.decr('state:x', function(err, id) {});
-            break;
-          case 'left':
-            rc.incr('state:y', function(err, id) {});
-            break;
-          case 'right':
-            rc.decr('state:y', function(err, id) {});
-            break;
-        }
       });
     });
+    */
   })
   .on('chat:send', function (data) {
     rc.incr('messages:id:next', function(err, id) {
@@ -198,22 +184,39 @@ var valid = function(command) {
 
 // physics loop
 var physics = function() {
-  // TODO: is this causing flooding from server to clients?
-  while (queue.physics.length > 0) {
-    var command = valid(queue.physics.shift());
+  (function iterate(command) {
+    process.nextTick(function() {
+      command = valid(command);
 
-    if (command !== undefined) {
-      console.log(command);
+      if (command !== undefined) {
+        console.log(command);
 
-      // TODO: push updated position to game state object instead of publishing directly
-      // updateState(command.data);
-      publishCommand(command.data);
-    }
-  }
+        switch(command.data) {
+          case 'forward':
+            state.x++;
+            break;
+          case 'reverse':
+            state.x--;
+            break;
+          case 'left':
+            state.y++;
+            break;
+          case 'right':
+            state.y--;
+            break;
+        }
+      }
+
+      // queue not empty, keep looping
+      if (queue.physics.length) {
+        return iterate(queue.physics.shift());
+      }
+    });
+  })(queue.physics.shift());
 };
 
 // init physics loop, fixed time step in milliseconds
-// setInterval(physics, 15);
+setInterval(physics, 15);
 
 // update loop
 var update = function() {
@@ -224,15 +227,16 @@ var update = function() {
       var x = res[0];
       var y = res[1];
 
-      // publish full state if changed
+      // publish state if changed
       // TODO: publish delta state
       if(x != state.x || y != state.y) {
-        state.x = x;
-        state.y = y;
-
-        console.log('state: ', state);
-
-        io.sockets.emit('state:update', state);
+        store.multi()
+          .set('state:x', state.x)
+          .set('state:y', state.y)
+          .exec(function(err, res) {
+            console.log('state: ', state);
+            io.sockets.emit('state:update', state);
+          });
       }
     });
 };

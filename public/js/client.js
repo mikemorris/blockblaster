@@ -189,7 +189,7 @@ var map = [
       $('#accelerometer .z .value').text(z);
     }
 
-    while (queue.physics.length > 0) {
+    while (queue.physics.length) {
       var command = valid(queue.physics.shift());
 
       if (command !== undefined) {
@@ -209,7 +209,7 @@ var map = [
         }
 
         //queue.animation.push(command);
-        queue.animation.push({ state: state });
+        queue.animation.push(state);
 
         // console.log(command);
         socket.emit('command:send', command);
@@ -217,25 +217,9 @@ var map = [
     }
   };
 
-  var render = function(action) {
-    var username = action.username;
-    var data = action.data;
-    var state = action.state;
-
+  var render = function(state) {
     if (state) {
       $('#panel').css({transform: 'rotateX('+ state.x +'deg) rotateY('+ state.y +'deg)'});
-    }
-
-    // authoritative, data from server
-    if (username !== undefined) {
-      $('#action').html(username + ': ' + data);
-      // console.log('server: ', data)
-    }
-
-    // prosepctive, data from client
-    else {
-      $('#action').html(data);
-      // console.log('client: ', state)
     }
   };
 
@@ -247,13 +231,9 @@ var map = [
     if(clock) {
       clock.tick();
 
-      // time in milliseconds since last frame
-      // console.log('dt: ', clock.dt);
-
       // process animation queue
-      while (queue.animation.length > 0) {
-        var action = queue.animation.shift();
-        render(action);
+      while (queue.animation.length) {
+        render(queue.animation.shift());
       }
     }
   };
@@ -266,12 +246,12 @@ var map = [
     });
 
     socket.on('command:update', function (username, data) {
-      queue.animation.push({ data: data, username: username });
+      //queue.animation.push({ data: data, username: username });
     });
 
     socket.on('state:update', function (data) {
       state = data;
-      queue.animation.push({ state: state });
+      queue.animation.push(data);
     });
 
     // keybindings
