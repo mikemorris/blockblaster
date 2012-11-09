@@ -191,7 +191,7 @@ var physics = function() {
       if (command !== undefined) {
         console.log(command);
 
-        switch(command.data) {
+        switch(command) {
           case 'forward':
             state.x++;
             break;
