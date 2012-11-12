@@ -29,28 +29,30 @@
 
       var last = queue.motion.length - 1;
       var now = queue.motion[0].gyroscope;
-      var old = queue.motion[last].gyroscope;
+      var then = queue.motion[last].gyroscope;
 
-      // alpha, beta, gamma
-      var delta = [
-        now.alpha - old.alpha,
-        now.beta - old.beta,
-        now.gamma - old.gamma
-      ];
+      if (now.alpha !== null) {
+        // alpha, beta, gamma
+        var delta = [
+          now.alpha - then.alpha,
+          now.beta - then.beta,
+          now.gamma - then.gamma
+        ];
 
-      var length = delta.length;
-      for (var i; i < length; i++) {
-        var value = delta[i];
-        if (Math.abs(value) > 1) {
-          var index = (value >= 0 ? 0 : 1);
-          var event = map[i][index];
+        var length = delta.length;
+        for (var i = 0; i < length; i++) {
+          var value = delta[i];
+          if (Math.abs(value) > 1) {
+            var index = (value >= 0 ? 0 : 1);
+            var event = map[i][index];
 
-          if (event) {
-            document.dispatchEvent(new CustomEvent('gyrocopter', {
-              detail: {
-                direction: event
-              }
-            }));
+            if (event) {
+              document.dispatchEvent(new CustomEvent('gyrocopter', {
+                detail: {
+                  direction: event
+                }
+              }));
+            }
           }
         }
       }
