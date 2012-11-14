@@ -191,18 +191,19 @@ var physics = function() {
       if (command !== undefined) {
         console.log(command);
 
+        // pipe valid commands directly to redis
         switch(command) {
           case 'forward':
-            state.x++;
+            store.incr('state:x', function(err, res) {});
             break;
           case 'reverse':
-            state.x--;
+            store.decr('state:x', function(err, res) {});
             break;
           case 'left':
-            state.y++;
+            store.incr('state:y', function(err, res) {});
             break;
           case 'right':
-            state.y--;
+            store.decr('state:y', function(err, res) {});
             break;
         }
       }
@@ -227,16 +228,15 @@ var update = function() {
       var x = res[0];
       var y = res[1];
 
+      // defer to redis for absolute state
       // publish state if changed
       // TODO: publish delta state
-      if(x != state.x || y != state.y) {
-        store.multi()
-          .set('state:x', state.x)
-          .set('state:y', state.y)
-          .exec(function(err, res) {
-            console.log('state: ', state);
-            io.sockets.emit('state:update', state);
-          });
+      if(state.x != x || state.y != y) {
+        state.x = x;
+        state.y = y;
+
+        console.log('state: ', state);
+        io.sockets.emit('state:update', state);
       }
     });
 };

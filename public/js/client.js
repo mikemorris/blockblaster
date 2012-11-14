@@ -114,8 +114,8 @@ var game = {} || game;
       'map': {
         'forward': [87, 38], // [ W, Up ]
         'reverse': [83, 40], // [ S, Down ]
-        'left': [65, 37], // [ A, Left ]
-        'right': [68, 39] // [ D, Right ]
+        'left': [68, 39], // [ D, Right ]
+        'right': [65, 37] // [ A, Left ]
       },
       'func': 'keyboard'
     });
