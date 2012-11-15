@@ -13,8 +13,12 @@ var state = {
   y: 0
 };
 
+// commands to be processed
 var queue = {};
 queue.physics = [];
+
+// processed command ids for client ack
+var processed = [];
 
 var config = require('./config');
 
@@ -94,7 +98,7 @@ store.multi()
       }
 
       initState.exec(function(err, res) {
-        io.sockets.emit('state:update', state);
+        io.sockets.emit('state:update', { state: state });
       });
     }
 
@@ -108,7 +112,7 @@ store.multi()
 
       console.log('state: ', state);
 
-      io.sockets.emit('state:update', state);
+      io.sockets.emit('state:update', { state: state });
     }
   });
 
@@ -117,7 +121,7 @@ io.sockets.on('connection', function (socket) {
   var rc = redis.createClient(port, host);
   rc.auth(pass, function(err) {});
 
-  io.sockets.emit('state:update', state);
+  io.sockets.emit('state:update', { state: state });
 
   socket.on('user:add', function(username) {
     // add user to redis set
@@ -172,6 +176,8 @@ io.sockets.on('connection', function (socket) {
       publishUsers();
       rc.quit();
     });
+
+    // TODO: purge move queue
   });
 });
 
@@ -192,7 +198,7 @@ var physics = function() {
         console.log(command);
 
         // pipe valid commands directly to redis
-        switch(command) {
+        switch(command.data) {
           case 'forward':
             store.incr('state:x', function(err, res) {});
             break;
@@ -206,6 +212,9 @@ var physics = function() {
             store.decr('state:y', function(err, res) {});
             break;
         }
+
+        // shift ack state to queue
+        processed.push(command.id);
       }
 
       // queue not empty, keep looping
@@ -235,8 +244,18 @@ var update = function() {
         state.x = x;
         state.y = y;
 
-        console.log('state: ', state);
-        io.sockets.emit('state:update', state);
+        // create data object containing
+        // authoritative state and acknowledged commands
+        var data = {};
+        data.state = state;
+        data.ack = _.max(processed);
+
+        // clear processed command queue
+        processed = [];
+
+        // return data object to client
+        console.log(data);
+        io.sockets.emit('state:update', data);
       }
     });
 };

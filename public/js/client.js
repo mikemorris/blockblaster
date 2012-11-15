@@ -8,6 +8,8 @@ var game = {} || game;
     y: 0
   };
 
+  var id = 0;
+
   var queue = {};
   queue.move = [];
   queue.physics = [];
@@ -21,21 +23,18 @@ var game = {} || game;
   };
 
   var physics = function() {
-    // create move object and add to physics queue
-    var move = {
-      time: Date.now(),
-      state: state
-    };
-
-    // add move to queue, then trim queue to max size
-    queue.move.unshift(move);
-    queue.move = queue.move.slice(0, 10);
-
     while (queue.physics.length) {
       var command = valid(queue.physics.shift());
 
+      // TODO: state is absolute, but events are relative?
       if (command !== undefined) {
-        switch(command) {
+        // create move object and add to physics queue
+        var move = {
+          time: Date.now(),
+          data: command.data
+        };
+
+        switch(command.data) {
           case 'forward':
             state.x++;
             break;
@@ -50,12 +49,15 @@ var game = {} || game;
             break;
         }
 
-        queue.animation.push(state);
+        // add move to queue, then trim queue to max size
+        queue.move[command.id] = move;
 
         // console.log(command);
         socket.emit('command:send', command);
       }
     }
+
+    queue.animation.push(state);
   };
 
   var render = function(state) {
@@ -72,10 +74,9 @@ var game = {} || game;
     if(clock) {
       clock.tick();
 
-      // process animation queue
-      while (queue.animation.length) {
-        render(queue.animation.shift());
-      }
+      // TODO: add delta time interpolation
+      render(queue.animation.pop());
+      queue.animation = [];
     }
   };
 
@@ -87,14 +88,29 @@ var game = {} || game;
     });
 
     socket.on('state:update', function (data) {
-      state = data;
-      queue.animation.push(data);
+      // TODO: use this value for replay, but dont expose to animation loop yet?
+      state = data.state;
+
+      if (data.ack) {
+        // remove most recent processed move and all older moves from queue
+        if (queue.move[data.ack + 1]) {
+          queue.move = queue.move.slice(data.ack + 1);
+        }
+
+        for (var i = data.ack; i < queue.move.length; i++) {
+          queue.physics.push(queue.move[i]);
+        }
+      }
     });
 
     socket.emit('user:add', 'You');
 
     document.addEventListener('gyrocopter', function(event) {
-      queue.physics.push(event.detail.direction);
+      var command = {};
+      command.data = event.detail.direction;
+      command.id = id++;
+
+      queue.physics.push(command);
     });
 
     // gyroscope
