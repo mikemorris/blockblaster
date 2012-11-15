@@ -31,6 +31,7 @@ var game = {} || game;
         // create move object and add to physics queue
         var move = {
           time: Date.now(),
+          id: command.id,
           data: command.data
         };
 
@@ -50,7 +51,7 @@ var game = {} || game;
         }
 
         // add move to queue, then trim queue to max size
-        queue.move[command.id] = move;
+        queue.move.push(move);
 
         // console.log(command);
         socket.emit('command:send', command);
@@ -93,11 +94,11 @@ var game = {} || game;
 
       if (data.ack) {
         // remove most recent processed move and all older moves from queue
-        if (queue.move[data.ack + 1]) {
-          queue.move = queue.move.slice(data.ack + 1);
-        }
+        queue.move = queue.move.filter(function(el, index, array) {
+          return el.id > data.ack;
+        });
 
-        for (var i = data.ack; i < queue.move.length; i++) {
+        for (var i = 0; i < queue.move.length; i++) {
           queue.physics.push(queue.move[i]);
         }
       }

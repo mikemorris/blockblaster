@@ -4,7 +4,7 @@
   "scripts": {
     "start": "server.js"
   },
-  "version": "0.2.0-29",
+  "version": "0.2.0-30",
   "engines": {
     "node": "0.8.x"
   },
