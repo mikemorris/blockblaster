@@ -3,7 +3,15 @@ var game = {} || game;
 (function() {
   var socket;
 
+  // authoritative from server
   var state = {
+    x: 0,
+    y: 0
+  };
+
+  // client prediction
+  // TODO: array of positions? splice to update?
+  var client = {
     x: 0,
     y: 0
   };
@@ -11,54 +19,71 @@ var game = {} || game;
   var id = 0;
 
   var queue = {};
+  queue.input = [];
   queue.move = [];
-  queue.physics = [];
-  queue.animation = [];
+  // queue.animation = [];
 
   // TODO: replace with physics logic using dependency injection pattern
-  var valid = function(command) {
-    if(true) {
-      return command;
+  // TODO: check for collisions and cheating (moving too quickly) here
+  // TODO: pass in game object/player (with defined acceleration) instead of just deltas?
+  var valid = function(dx, dy) {
+    // set dx and dy to max value allowed
+    return {dx: dx, dy: dy};
+  };
+
+  // physics loop
+  var physics = function() {
+    // get velocity vector from input in queue, then clear queue
+    var vector = velocity(queue.input);
+    queue.input = [];
+
+    var dx = vector.dx;
+    var dy = vector.dy;
+
+    if (dx || dy) {
+      // create move object
+      var move = {
+        time: Date.now(),
+        id: id++,
+        data: vector
+      };
+
+      // add client prediction to animation queue
+      client.x += dx;
+      client.y += dy;
+      // queue.animation.push(client);
+
+      // add move to queue, then send to server
+      queue.move.push(move);
+      socket.emit('command:send', move);
     }
   };
 
-  var physics = function() {
-    while (queue.physics.length) {
-      var command = valid(queue.physics.shift());
+  // takes array of inputs and returns a velocity vector
+  var velocity = function(input) {
+    // return change as vector, delta x and delta y
+    var dx = 0;
+    var dy = 0;
 
-      // TODO: state is absolute, but events are relative?
-      if (command !== undefined) {
-        // create move object and add to physics queue
-        var move = {
-          time: Date.now(),
-          id: command.id,
-          data: command.data
-        };
-
-        switch(command.data) {
-          case 'forward':
-            state.x++;
-            break;
-          case 'reverse':
-            state.x--;
-            break;
-          case 'left':
-            state.y++;
-            break;
-          case 'right':
-            state.y--;
-            break;
-        }
-
-        // add move to queue, then trim queue to max size
-        queue.move.push(move);
-
-        // console.log(command);
-        socket.emit('command:send', command);
+    var length = input.length;
+    for (var i = 0; i < length; i++) {
+      switch(input[i].data) {
+        case 'forward':
+          dx++;
+          break;
+        case 'reverse':
+          dx--;
+          break;
+        case 'left':
+          dy++;
+          break;
+        case 'right':
+          dy--;
+          break;
       }
     }
 
-    queue.animation.push(state);
+    return valid(dx, dy);
   };
 
   var render = function(state) {
@@ -76,8 +101,8 @@ var game = {} || game;
       clock.tick();
 
       // TODO: add delta time interpolation
-      render(queue.animation.pop());
-      queue.animation = [];
+      render(client);
+      // queue.animation = [];
     }
   };
 
@@ -89,6 +114,14 @@ var game = {} || game;
     });
 
     socket.on('state:update', function (data) {
+      var vector;
+      var dx = 0;
+      var dy = 0;
+
+      // TODO: server reconciliation for MY data,
+      // entity interpolation for THEIR data
+
+      // server reconciliation
       // TODO: use this value for replay, but dont expose to animation loop yet?
       state = data.state;
 
@@ -99,9 +132,15 @@ var game = {} || game;
         });
 
         for (var i = 0; i < queue.move.length; i++) {
-          queue.physics.push(queue.move[i]);
+          vector = queue.move[i].data;
+          dx += vector.dx;
+          dy += vector.dy;
         }
       }
+
+      // update client position with reconciled prediction
+      client.x = parseInt(state.x) + dx;
+      client.y = parseInt(state.y) + dy;
     });
 
     socket.emit('user:add', 'You');
@@ -109,9 +148,8 @@ var game = {} || game;
     document.addEventListener('gyrocopter', function(event) {
       var command = {};
       command.data = event.detail.direction;
-      command.id = id++;
 
-      queue.physics.push(command);
+      queue.input.push(command);
     });
 
     // gyroscope

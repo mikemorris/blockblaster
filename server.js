@@ -182,46 +182,50 @@ io.sockets.on('connection', function (socket) {
 });
 
 // TODO: replace with physics logic using dependency injection pattern
-var valid = function(command) {
-  if(true) {
-    return command;
-  }
+// TODO: check for collisions and cheating (moving too quickly) here
+// TODO: pass in game object/player (with defined acceleration) instead of just deltas?
+var valid = function(dx, dy) {
+  // set dx and dy to max value allowed
+  console.log([ dx, dy ]);
+  return {dx: dx, dy: dy};
 };
 
 // physics loop
 var physics = function() {
-  (function iterate(command) {
-    process.nextTick(function() {
-      command = valid(command);
+  (function iterate(move) {
+    if (move) {
+      process.nextTick(function() {
+        var vector;
+        var dx;
+        var dy;
 
-      if (command !== undefined) {
-        console.log(command);
+        vector = valid(move.data.dx, move.data.dy);
+        dx = vector.dx;
+        dy = vector.dy;
 
         // pipe valid commands directly to redis
-        switch(command.data) {
-          case 'forward':
-            store.incr('state:x', function(err, res) {});
-            break;
-          case 'reverse':
-            store.decr('state:x', function(err, res) {});
-            break;
-          case 'left':
-            store.incr('state:y', function(err, res) {});
-            break;
-          case 'right':
-            store.decr('state:y', function(err, res) {});
-            break;
+        // Math.abs() because passing a negative to redis.decrby() actually increments
+        if (dx > 0) {
+          store.incrby('state:x', Math.abs(dx), function(err, res) {});
+        } else if (dx < 0) {
+          store.decrby('state:x', Math.abs(dx), function(err, res) {});
+        }
+
+        if (dy > 0) {
+          store.incrby('state:y', Math.abs(dy), function(err, res) {});
+        } else if (dy < 0) {
+          store.decrby('state:y', Math.abs(dy), function(err, res) {});
         }
 
         // shift ack state to queue
-        processed.push(command.id);
-      }
+        processed.push(move.id);
 
-      // queue not empty, keep looping
-      if (queue.physics.length) {
-        return iterate(queue.physics.shift());
-      }
-    });
+        // queue not empty, keep looping
+        if (queue.physics.length) {
+          return iterate(queue.physics.shift());
+        }
+      });
+    }
   })(queue.physics.shift());
 };
 
@@ -245,12 +249,12 @@ var update = function() {
         state.y = y;
 
         // create data object containing
-        // authoritative state and acknowledged commands
+        // authoritative state and last processed input id
         var data = {};
         data.state = state;
         data.ack = _.max(processed);
 
-        // clear processed command queue
+        // clear processed command array
         processed = [];
 
         // return data object to client
