@@ -144,6 +144,7 @@ io.sockets.on('connection', function (socket) {
   })
   .on('command:send', function (command) {
     // add to server physics queue instead of immeadiately publishing
+    command.uid = socket.uid;
     queue.physics.push(command);
 
     /*
@@ -186,14 +187,16 @@ io.sockets.on('connection', function (socket) {
 // TODO: pass in game object/player (with defined acceleration) instead of just deltas?
 var valid = function(dx, dy) {
   // set dx and dy to max value allowed
-  console.log([ dx, dy ]);
-  return {dx: dx, dy: dy};
+  return {
+    dx: dx,
+    dy: dy
+  };
 };
 
 // physics loop
 var physics = function() {
-  (function iterate(move) {
-    if (move) {
+  if (queue.physics.length) {
+    (function iterate(move) {
       process.nextTick(function() {
         var vector;
         var dx;
@@ -204,17 +207,13 @@ var physics = function() {
         dy = vector.dy;
 
         // pipe valid commands directly to redis
-        // Math.abs() because passing a negative to redis.decrby() actually increments
-        if (dx > 0) {
-          store.incrby('state:x', Math.abs(dx), function(err, res) {});
-        } else if (dx < 0) {
-          store.decrby('state:x', Math.abs(dx), function(err, res) {});
+        // passing a negative value to redis.incrby() decrements
+        if (dx !== 0) {
+          store.incrby('state:x', dx, function(err, res) {});
         }
 
-        if (dy > 0) {
-          store.incrby('state:y', Math.abs(dy), function(err, res) {});
-        } else if (dy < 0) {
-          store.decrby('state:y', Math.abs(dy), function(err, res) {});
+        if (dy !== 0) {
+          store.incrby('state:y', dy, function(err, res) {});
         }
 
         // shift ack state to queue
@@ -225,8 +224,8 @@ var physics = function() {
           return iterate(queue.physics.shift());
         }
       });
-    }
-  })(queue.physics.shift());
+    })(queue.physics.shift());
+  }
 };
 
 // init physics loop, fixed time step in milliseconds
@@ -238,29 +237,30 @@ var update = function() {
     .get('state:x')
     .get('state:y')
     .exec(function(err, res) {
+      // create data object containing
+      // authoritative state and last processed input id
+      var data = {};
+      data.time = Date.now();
+
+      // defer to redis for absolute state
       var x = res[0];
       var y = res[1];
 
-      // defer to redis for absolute state
+      // acknowledge most recent processed command and clear array
+      if (processed.length) {
+        data.ack = _.max(processed);
+        processed = [];
+      }
+      
       // publish state if changed
-      // TODO: publish delta state
-      if(state.x != x || state.y != y) {
+      if (state.x != x || state.y != y) {
         state.x = x;
         state.y = y;
-
-        // create data object containing
-        // authoritative state and last processed input id
-        var data = {};
         data.state = state;
-        data.ack = _.max(processed);
-
-        // clear processed command array
-        processed = [];
-
-        // return data object to client
-        console.log(data);
-        io.sockets.emit('state:update', data);
       }
+
+      // return delta object to client
+      io.sockets.emit('state:update', data);
     });
 };
 
