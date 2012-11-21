@@ -180,10 +180,6 @@ var game = {} || game;
         socket.emit('command:send', move);
       }
     }
-
-    // process server updates
-    // interpolate position of other players
-    interpolate();
   };
 
   var render = function(state) {
@@ -199,6 +195,10 @@ var game = {} || game;
 
     if(clock) {
       clock.tick();
+
+      // process server updates
+      // interpolate position of other players
+      interpolate();
 
       // TODO: add delta time interpolation
       render(client);
