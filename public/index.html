@@ -2,11 +2,14 @@
 <html>
   <head>
     <title>Game</title>
-    <link href="/css/style.css" type="text/css" rel="stylesheet" />
+    <link href="/css/screen.css" type="text/css" rel="stylesheet" />
   </head>
 
   <body>
     <div id="main">
+      <div id="canvas-wrapper"></div>
+      <p>Use left and right to move, and spacebar to shoot.</p>
+      <p><a href="https://github.com/greypants/blockblaster-boilerplate">View this project on GitHub</a></p>
       <div id="conversation"></div>
       <div id="action"></div>
       <div id="panel"></div>
@@ -26,8 +29,18 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="/core/vendor/underscore/underscore-min.js"></script>
     <script src="/core/vendor/clock.js"></script>
-    <script src="/vendor/rAF/rAF.js"></script>
-    <script src="/js/gyrocopter.js"></script>
-    <script src="/js/client.js"></script>
+    <script src="/js/dependencies/polyfills.js"></script>
+    <script src="/js/types/game.Object.js"></script>
+    <script src="/js/types/game.Rectangle.js"></script>
+    <script src="/js/types/game.Image.js"></script>
+    <script src="/js/types/game.Ship.js"></script>
+    <script src="/js/types/game.Enemy.js"></script>
+    <script src="/js/types/game.Missile.js"></script>
+    <script src="/js/scenes/game.scenes.level_1.js"></script>
+    <script src="/js/game.core.js"></script>
+    <script src="/js/game.frames.js"></script>
+    <script src="/js/game.input.js"></script>
+    <script src="/js/game.init.js"></script>
+    <script>GAME.init();</script>
   </body>
 </html>
