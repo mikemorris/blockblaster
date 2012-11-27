@@ -9,10 +9,14 @@ window.GAME = window.GAME || {};
 			scene.createObjects();
 
 			// Push methods to run every frame
-			game.frames.actions = [
+			game.client.actions = [
 				game.core.clearCanvas,
 				scene.updateShip,
 				scene.updateMissles,
+
+        // process server updates
+        // interpolate position of other players
+        // interpolate();
 				scene.updateEnemies
 			];
 		},

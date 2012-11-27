@@ -8,6 +8,25 @@ var sio = require('socket.io'),
     RedisStore = sio.RedisStore,
     io = sio.listen(app);
 
+// turn off websocket debug spam
+io.set('log level', 1);
+
+// init global game object
+var GAME = {};
+var game = GAME;
+
+// require core game libs
+game.core = require('./public/js/game.core');
+
+// init server time
+game.time = {};
+game.time.then = Date.now();
+
+var config = require('./config');
+
+// http config
+var file = new(static.Server)('./public');
+
 var state = {
   x: 0,
   y: 0
@@ -19,11 +38,6 @@ queue.physics = [];
 
 // processed command ids for client ack
 var processed = [];
-
-var config = require('./config');
-
-// http config
-var file = new(static.Server)('./public');
 
 app.listen(config.port);
 console.log('Server started, listening on port ' + config.port);
@@ -99,6 +113,7 @@ store.multi()
 
       initState.exec(function(err, res) {
         io.sockets.emit('state:update', { state: state });
+        console.log(state);
       });
     }
 
@@ -110,9 +125,8 @@ store.multi()
       state.x = x;
       state.y = y;
 
-      console.log('state: ', state);
-
       io.sockets.emit('state:update', { state: state });
+      console.log(state);
     }
   });
 
@@ -122,6 +136,7 @@ io.sockets.on('connection', function (socket) {
   rc.auth(pass, function(err) {});
 
   io.sockets.emit('state:update', { state: state });
+  console.log(state);
 
   socket.on('user:add', function(username) {
     // add user to redis set
@@ -185,7 +200,7 @@ io.sockets.on('connection', function (socket) {
 // TODO: replace with physics logic using dependency injection pattern
 // TODO: check for collisions and cheating (moving too quickly) here
 // TODO: pass in game object/player (with defined acceleration) instead of just deltas?
-var valid = function(dx, dy) {
+var getVector = function(dx, dy) {
   // set dx and dy to max value allowed
   return {
     dx: dx,
@@ -195,29 +210,37 @@ var valid = function(dx, dy) {
 
 // physics loop
 var physics = function() {
+  // TODO: integrate into game.client.setDelta
+  game.time.now = Date.now();
+  game.time.delta = (game.time.now - game.time.then) / 1000;
+  game.time.then = game.time.now;
+
   if (queue.physics.length) {
     (function iterate(move) {
       process.nextTick(function() {
         var vector;
-        var dx;
-        var dy;
+        var vx;
+        var vy;
 
-        vector = valid(move.data.dx, move.data.dy);
-        dx = vector.dx;
-        dy = vector.dy;
+        // calculate delta time vector
+        // vector = game.core.getVector(move.data.vector.dx, move.data.vector.dy);
+        vector = game.core.getVelocity(move.input);
+
+        vx = parseInt(move.data.speed * game.time.delta * vector.dx);
+        vy = parseInt(move.data.speed * game.time.delta * vector.dy);
 
         // pipe valid commands directly to redis
         // passing a negative value to redis.incrby() decrements
-        if (dx !== 0) {
-          store.incrby('state:x', dx, function(err, res) {});
+        if (vx !== 0) {
+          store.incrby('state:x', vx, function(err, res) {});
         }
 
-        if (dy !== 0) {
-          store.incrby('state:y', dy, function(err, res) {});
+        if (vy !== 0) {
+          store.incrby('state:y', vy, function(err, res) {});
         }
 
         // shift ack state to queue
-        processed.push(move.id);
+        processed.push(move.seq);
 
         // queue not empty, keep looping
         if (queue.physics.length) {
@@ -240,7 +263,7 @@ var update = function() {
       // create data object containing
       // authoritative state and last processed input id
       var data = {};
-      data.time = Date.now();
+      data.time = game.time.now;
 
       // defer to redis for absolute state
       var x = res[0];
@@ -257,6 +280,7 @@ var update = function() {
         state.x = x;
         state.y = y;
         data.state = state;
+        console.log(data.state);
       }
 
       // return delta object to client

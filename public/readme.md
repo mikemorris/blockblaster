@@ -31,11 +31,11 @@ It is crucial to be as organized as possible. Game JS can get HUGE and nigh impo
 - root
  - **init**: Sets up the and starts the game.
  - **core**: Where I keep my global setup and helper methods that get used game-wide.
- - **frames**: Controls the progression of animationFrames and the game itself.
+ - **client**: Controls the progression of animationFrames and the game itself.
  - **input**: Manages all user input (mouse, keyboard, touch, etc.)
 
  ### Frame-based programming with time-based animation
- All this magic happens in game.frames.js. For a fuller explanation of the concept, see my [blog post](http://viget.com/extend/time-based-animation)
+ All this magic happens in game.client.js. For a fuller explanation of the concept, see my [blog post](http://viget.com/extend/time-based-animation)
 
  ### Object Oriented JavaScript and the `prototype` chain
  Coming soon...

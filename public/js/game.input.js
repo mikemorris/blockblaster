@@ -6,7 +6,9 @@ window.GAME = window.GAME || {};
 		keys: {
 			32: 'spacebar',
 			37: 'left',
-			39: 'right'
+			39: 'right',
+			65: 'left',
+      68: 'right'
 		},
 
 		init: function() {

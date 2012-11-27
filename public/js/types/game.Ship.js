@@ -30,29 +30,69 @@ window.GAME = window.GAME || {};
 		this.repeatRate = this.repeatRate || 30;
 	};
 
-	game.Ship.prototype.respondToInput = function(){
+	game.Ship.prototype.respondToInput = function() {
 		var pressed = game.input.pressed;
+    var vector = game.core.getVelocity(pressed);
+    var input;
 
-		this.vx = 0;
-
-		if(pressed.left) {
-			this.vx = this.speed * game.frames.delta * -1;
-		}
-
-		if(pressed.right) {
-			this.vx = this.speed * game.frames.delta;
-		}
+    this.vx = parseInt(this.speed * game.client.delta * vector.dx);
 
 		if(pressed.spacebar) {
 			this.fire();
 		} else {
 			this.fireButtonReleased = true;
 		}
+
+    if (this.vx) {
+      // create input object
+      input = {
+        time: Date.now(),
+        seq: game.seq++,
+        input: pressed,
+        data: {
+          vector: vector,
+          speed: this.speed
+        }
+      };
+
+      // add input to queue, then send to server
+      game.queue.input.push(input);
+      game.socket.emit('command:send', input);
+    }
 	};
 
-	game.Ship.prototype.move = function(direction) {
+	game.Ship.prototype.move = function() {
 		this.x += this.vx;
 	};
+
+  game.Ship.prototype.reconcile = function() {
+    // server reconciliation
+    var dx = 0;
+    var dy = 0;
+    var vx;
+    var vector;
+    var length;
+
+    // bind this inside filter to Ship
+    // remove most recent processed move and all older moves from queue
+    game.queue.input = game.queue.input.filter((function(el, index, array) {
+      return el.seq > this.ack;
+    }).bind(this));
+
+    // cache length for replay loop
+    length = game.queue.input.length;
+
+    for (var i = 0; i < length; i++) {
+      vector = game.queue.input[i].data.vector;
+      dx += vector.dx;
+      dy += vector.dy;
+    }
+
+    // update client position with reconciled prediction
+    // server position plus delta of unprocessed input
+    vx = this.speed * game.client.delta * dx;
+    this.x = this.sx + vx;
+  };
 
 	game.Ship.prototype.loadMissiles = function() {
 		var i = 0;
@@ -63,7 +103,7 @@ window.GAME = window.GAME || {};
 	};
 
 	game.Ship.prototype.fire = function() {
-		this.now = game.frames.now;
+		this.now = game.client.now;
 		var fireDelta = (this.now - this.then)/1000;
 		var missilesLoaded = this.missiles.length > 0;
 		var gunIsCool = fireDelta > 1 / this.repeatRate;

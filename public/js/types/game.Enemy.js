@@ -46,10 +46,10 @@ window.GAME = window.GAME || {};
 	};
 
 	game.Enemy.prototype.move = function() {
-		this.x += this.vx * this.direction * game.frames.delta;
+		this.x += this.vx * this.direction * game.client.delta;
 		if(this.isHit) {
-			this.y += this.vy * game.frames.delta;
-			this.rotation += 20 * game.frames.delta;
+			this.y += this.vy * game.client.delta;
+			this.rotation += 20 * game.client.delta;
 			this.isDestroyed = this.y < -this.height;
 		} else {
 			if(this.x > this.origin.x + this.range) {

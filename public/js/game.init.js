@@ -8,8 +8,8 @@ window.GAME = window.GAME || {};
 		game.core.initGlobalVariables();
 		game.core.loadScene('level_1');
 		game.input.init();
-		game.frames.init();
-		game.frames.play();
+		game.client.init();
+		game.client.play();
 	};
 
 })(window.GAME);
