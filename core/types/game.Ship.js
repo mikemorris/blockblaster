@@ -10,8 +10,7 @@ var ship = (function(game) {
 
 	game.Ship.prototype.setDefaults = function() {
 		this.fireButtonReleased = true;
-		this.image =  new game.Image('images/ship.png'),
-		this.missiles = [],
+		this.missiles = [];
 		this.now = 0;
 		this.then = 0;
 		this.rotation = 0; // radians
@@ -19,10 +18,15 @@ var ship = (function(game) {
 		this.vx = 0;
 		this.height = 50;
 		this.width = 50;
-		this.x = game.canvas.width / 2 - this.width / 2;
-		this.y = game.canvas.height - this.height - 25;
+    this.x = game.canvas ? game.canvas.width / 2 - this.width / 2 : 0;
+    this.y = game.canvas ? game.canvas.height - this.height - 25 : 0;
 
-		// User defineable settings
+    // TODO: client side only
+    if (typeof module === 'undefined' && !module.exports) {
+      this.image = new game.Image('images/ship.png');
+    }
+
+		// user defineable settings
 		this.speed = this.speed || 300;
 		this.maxMissiles = this.maxMissiles || 3;
 		this.repeatRate = this.repeatRate || 30;

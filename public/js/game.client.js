@@ -6,30 +6,63 @@ window.GAME = window.GAME || {};
 		init: function() {
       var socket = game.socket = io.connect();
 
-      socket.on('state:update', function (data) {
-        game.time.server = data.time;
-        game.time.client = game.time.server - game.offset;
+      socket.on('players', function(data) {
+        console.log(data);
+        game.scenes.level_1.players = data;
+      });
 
-        // update server state
-        if (data.state) {
-          // authoritatively set internal state
-          game.scenes.level_1.ship.sx = parseInt(data.state.x);
-          game.scenes.level_1.ship.sy = parseInt(data.state.y);
+      // set socket.uid before processing updates
+      socket.on('uid', function(data) {
+        socket.uid = data;
 
-          // queue server updates for entity interpolation
-          game.queue.server.push(data);
-          
-          // splice array, keeping BUFFER_SIZE most recent items
-          if (game.queue.server.length >= game.buffersize) {
-            game.queue.server.splice(-game.buffersize);
+        socket.on('state:update', function(data) {
+          // update server time
+          game.time.server = data.time;
+          game.time.client = game.time.server - game.offset;
+
+          var players = Object.keys(data.players);
+          var length = players.length;
+
+          var uid;
+          var player;
+          var client;
+
+          // update server state, interpolate foreign entities
+          if (length) {
+
+            // TODO: draw ships on stage for each player
+            for (var i = 0; i < length; i++) {
+              uid = players[i];
+              player = data.players[uid];
+
+              // authoritatively set internal state if player exists on client
+              client = game.scenes.level_1;
+
+              if (client) {
+                // update last acknowledged input
+                if (data.ack) {
+                  client.ship.ack = data.ack;
+                }
+
+                client.ship.sx = parseInt(player.ship.x);
+                client.ship.sy = parseInt(player.ship.y);
+
+                // reconcile client prediction with server
+                if (uid === socket.uid) {
+                  client.ship.reconcile();
+                } else {
+                  // queue server updates for entity interpolation
+                  game.queue.server.push(player);
+                }
+              }
+            }
+            
+            // splice array, keeping BUFFER_SIZE most recent items
+            if (game.queue.server.length >= game.buffersize) {
+              game.queue.server.splice(-game.buffersize);
+            }
           }
-        }
-
-        // update last acknowledged input
-        if (data.ack) {
-          game.scenes.level_1.ship.ack = data.ack;
-          game.scenes.level_1.ship.reconcile();
-        }
+        });
       });
 
       // pause on blur doesnt make sense in multiplayer

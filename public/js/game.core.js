@@ -1,9 +1,5 @@
-var GAME;
-
-var core = (function() {
-
-  var game = this;
-	game.core = {
+var core = (function(game) {
+	var module = {
 
 		clearCanvas: function() {
 			game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
@@ -118,15 +114,12 @@ var core = (function() {
 		}
 	};
 
-  return game.core;
+  return module;
 });
 
 // export module or attach to window
 if (typeof module !== 'undefined' && module.exports) {
-  console.log(GAME);
-  GAME = {};
-  module.exports = core.apply(GAME);
+  module.exports = core;
 } else {
-  GAME = window.GAME || {};
-  window.GAME.core = core.apply(GAME);
+  window.GAME.core = core(window.GAME || {});
 }

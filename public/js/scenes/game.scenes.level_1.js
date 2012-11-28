@@ -34,12 +34,15 @@ window.GAME = window.GAME || {};
 		},
 
 		createObjects: function() {
+      // TODO: init new Player from WebSocket data on detection,
+      // not single ship on static init
 			scene.missiles = [];
 			scene.ship = new game.Ship({
 				speed: 300,
 				maxMissiles: 3,
 				repeatRate: 30
 			});
+
 			scene.loadEnemies();
 		},
 
