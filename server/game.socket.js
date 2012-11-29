@@ -12,6 +12,9 @@ var socket = (function() {
       rc.sadd('players', uid, function(err, res) {
         // init player
         player = game.players[uid] = new game.Player(socket, rc);
+
+        // TODO: send full player list to new connection
+        // but only send new player to existing connections
         io.sockets.emit('players', game.players);
       });
     },
@@ -81,7 +84,7 @@ var socket = (function() {
             // remove player from server
             delete game.players[uid];
 
-            io.sockets.emit('players', game.players);
+            io.sockets.emit('players:remove', uid);
           });
         });
 

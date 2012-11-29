@@ -51,6 +51,8 @@ var update = (function() {
           data.players[uid] = {};
           data.players[uid].ship = {};
           data.players[uid].ship.x = player.ship.x;
+
+          console.log(data.players[uid]);
         }
     
         // TODO: only send this update once, not once for each player
@@ -61,8 +63,6 @@ var update = (function() {
     emit: function(io, data, physics) {
       // server time stamp
       data.time = physics.time.now;
-
-      console.log(data);
 
       // return delta object to client
       io.sockets.emit('state:update', data);

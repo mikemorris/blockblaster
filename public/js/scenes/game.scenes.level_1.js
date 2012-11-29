@@ -13,10 +13,6 @@ window.GAME = window.GAME || {};
 				game.core.clearCanvas,
 				scene.updateShip,
 				scene.updateMissles,
-
-        // process server updates
-        // interpolate position of other players
-        // interpolate();
 				scene.updateEnemies
 			];
 		},
@@ -34,15 +30,8 @@ window.GAME = window.GAME || {};
 		},
 
 		createObjects: function() {
-      // TODO: init new Player from WebSocket data on detection,
-      // not single ship on static init
 			scene.missiles = [];
-			scene.ship = new game.Ship({
-				speed: 300,
-				maxMissiles: 3,
-				repeatRate: 30
-			});
-
+      scene.players = {};
 			scene.loadEnemies();
 		},
 
@@ -62,9 +51,27 @@ window.GAME = window.GAME || {};
 		},
 
 		updateShip: function() {
-			scene.ship.respondToInput();
-			scene.ship.move();
-			scene.ship.draw();
+      var players = Object.keys(scene.players);
+      var length = players.length;
+      var uid;
+      var player;
+
+      for (var i = 0; i < length; i++) {
+        uid = players[i];
+        player = scene.players[uid];
+
+        // client prediction only for active player
+        if (uid === game.uid) {
+          player.ship.respondToInput();
+          player.ship.move();
+        } else {
+          // process server updates
+          // interpolate position of other players
+          player.ship.interpolate();
+        }
+
+        player.ship.draw();
+      }
 		},
 
 		updateEnemies: function() {

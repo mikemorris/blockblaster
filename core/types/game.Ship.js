@@ -18,6 +18,8 @@ var ship = (function(game) {
 		this.vx = 0;
 		this.height = 50;
 		this.width = 50;
+
+    // TODO: this should not depend on client side code
     this.x = game.canvas ? game.canvas.width / 2 - this.width / 2 : 0;
     this.y = game.canvas ? game.canvas.height - this.height - 25 : 0;
 

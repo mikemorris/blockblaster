@@ -99,6 +99,10 @@ var core = (function(game) {
 
       // entity interpolation buffer size, frames * seconds
       game.buffersize = 120;
+
+      // entity interpolation smoothing factor
+      // lower number is slower smoothing
+      game.smoothing = 25;
 		},
 
 		isCollision: function(a, b) {

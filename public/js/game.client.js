@@ -7,13 +7,40 @@ window.GAME = window.GAME || {};
       var socket = game.socket = io.connect();
 
       socket.on('players', function(data) {
+        var players = Object.keys(data);
+        var length = players.length;
+        var uid;
+
+        for (var i = 0; i < length; i++) {
+          uid = players[i];
+          console.log(data[uid]);
+          game.scenes.level_1.players[uid] = data[uid];
+          game.scenes.level_1.players[uid].ship = new game.Ship({
+            speed: 300,
+            maxMissiles: 3,
+            repeatRate: 30
+          });
+
+          // TODO: init players using data from server
+          game.scenes.level_1.players[uid].ship.x = data[uid].ship.x;
+        }
+
+        console.log(game.scenes.level_1.players);
+      });
+
+      socket.on('players:add', function(data) {
         console.log(data);
-        game.scenes.level_1.players = data;
+        game.scenes.level_1.players[data.uid] = data.player;
+      });
+
+      socket.on('players:remove', function(uid) {
+        console.log(uid);
+        delete game.scenes.level_1.players[uid];
       });
 
       // set socket.uid before processing updates
       socket.on('uid', function(data) {
-        socket.uid = data;
+        game.uid = data;
 
         socket.on('state:update', function(data) {
           // update server time
@@ -30,15 +57,14 @@ window.GAME = window.GAME || {};
           // update server state, interpolate foreign entities
           if (length) {
 
-            // TODO: draw ships on stage for each player
             for (var i = 0; i < length; i++) {
               uid = players[i];
               player = data.players[uid];
 
               // authoritatively set internal state if player exists on client
-              client = game.scenes.level_1;
+              client = game.scenes.level_1.players[uid];
 
-              if (client) {
+              if (client && client.ship) {
                 // update last acknowledged input
                 if (data.ack) {
                   client.ship.ack = data.ack;
@@ -48,18 +74,18 @@ window.GAME = window.GAME || {};
                 client.ship.sy = parseInt(player.ship.y);
 
                 // reconcile client prediction with server
-                if (uid === socket.uid) {
+                if (uid === game.uid) {
                   client.ship.reconcile();
                 } else {
                   // queue server updates for entity interpolation
-                  game.queue.server.push(player);
+                  client.ship.queue.server.push(player);
+                  
+                  // splice array, keeping BUFFER_SIZE most recent items
+                  if (client.ship.queue.server.length >= game.buffersize) {
+                    client.ship.queue.server.splice(-game.buffersize);
+                  }
                 }
               }
-            }
-            
-            // splice array, keeping BUFFER_SIZE most recent items
-            if (game.queue.server.length >= game.buffersize) {
-              game.queue.server.splice(-game.buffersize);
             }
           }
         });
