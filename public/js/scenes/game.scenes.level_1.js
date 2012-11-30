@@ -65,7 +65,6 @@ window.GAME = window.GAME || {};
           player.ship.respondToInput();
           player.ship.move();
         } else {
-          // process server updates
           // interpolate position of other players
           player.ship.interpolate();
         }

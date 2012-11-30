@@ -142,6 +142,7 @@ var ship = (function(game) {
     }
 
     // interpolated position
+    // TODO: jump to position if large delta
     x = game.core.lerp(current.ship.x, target.ship.x, time_point);
 
     // apply smoothing

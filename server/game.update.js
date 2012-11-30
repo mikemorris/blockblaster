@@ -1,37 +1,23 @@
 var update = (function() {
   var module = {
 
-    init: function(redis, game, _) {
+    init: function(redis, async, game, _) {
       // init server update loop, fixed time step in milliseconds
       setInterval(function() {
-        module.loop(redis, game, _);
+        module.loop(redis, async, game, _);
       }, 45);
 
       return module;
     },
 
-    loop: function(redis, game, _) {
+    loop: function(redis, async, game, _) {
       var store = game.redis.store;
+      var physics = game.physics;
 
       // create data object containing
       // authoritative state and last processed input id
       var data = {};
       data.players = {};
-
-      store.smembers('players', function(err, res) {
-        var players = res;
-        var length = players.length;
-        var uid;
-
-        for (var i = 0; i < length; i++) {
-          uid = players[i];
-          module.update(store, uid, data, game, _);
-        }
-      });
-    },
-
-    update: function(store, uid, data, game, _) {
-      var physics = game.physics;
 
       // acknowledge most recent processed command and clear array
       if (physics.processed.length) {
@@ -39,6 +25,32 @@ var update = (function() {
         physics.processed = [];
       }
 
+      store.smembers('players', function(err, res) {
+        var players = res;
+        var length = players.length;
+        var uid;
+
+        console.log(players);
+
+        async.forEach(
+          players,
+          function(uid, callback) {
+            module.update(store, uid, data, game, _, callback);
+          },
+          function(err) {
+            // server time stamp
+            data.time = physics.time.now;
+
+            console.log(data);
+
+            // return delta object to client
+            game.socket.io.sockets.emit('state:update', data);
+          }
+        );
+      });
+    },
+
+    update: function(store, uid, data, game, _, callback) {
       // defer to redis for absolute state
       store.get('player:' + uid + ':ship:x', function(err, res) {
         var x = res;
@@ -51,22 +63,13 @@ var update = (function() {
           data.players[uid] = {};
           data.players[uid].ship = {};
           data.players[uid].ship.x = player.ship.x;
-
-          console.log(data.players[uid]);
         }
-    
-        // TODO: only send this update once, not once for each player
-        module.emit(game.socket.io, data, physics);
+
+        // notify async that iterator has completed
+        if (typeof callback === 'function') callback();
       });
-    },
-
-    emit: function(io, data, physics) {
-      // server time stamp
-      data.time = physics.time.now;
-
-      // return delta object to client
-      io.sockets.emit('state:update', data);
     }
+
   }
 
   return module;

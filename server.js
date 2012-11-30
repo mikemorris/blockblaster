@@ -1,6 +1,7 @@
 var app = require('http').createServer(handler);
 
 var redis = require('redis');
+var async = require('async');
 var static = require('node-static');
 var underscore = require('underscore');
 var config = require('./config');
@@ -29,7 +30,7 @@ GAME.socket = require('./server/game.socket').init(app, redis, config, GAME);
 
 // require server loops
 GAME.physics = require('./server/game.physics').init(GAME);
-GAME.update = require('./server/game.update').init(redis, GAME, underscore);
+GAME.update = require('./server/game.update').init(redis, async, GAME, underscore);
 
 // http config
 var file = new (static.Server)('./public');
