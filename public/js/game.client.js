@@ -11,21 +11,15 @@ window.GAME = window.GAME || {};
         var length = players.length;
         var uid;
 
+        // clear players object to purge disconnected ghosts
+        game.scenes.level_1.players = {};
+
+        // init players using data from server
         for (var i = 0; i < length; i++) {
           uid = players[i];
-          console.log(data[uid]);
-          game.scenes.level_1.players[uid] = data[uid];
-          game.scenes.level_1.players[uid].ship = new game.Ship({
-            speed: 300,
-            maxMissiles: 3,
-            repeatRate: 30
-          });
-
-          // TODO: init players using data from server
-          game.scenes.level_1.players[uid].ship.x = data[uid].ship.x;
+          game.scenes.level_1.players[uid] = new game.Player(data[uid]);
+          console.log(game.scenes.level_1.players[uid]);
         }
-
-        console.log(game.scenes.level_1.players);
       });
 
       socket.on('players:add', function(data) {

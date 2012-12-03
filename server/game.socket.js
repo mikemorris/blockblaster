@@ -11,7 +11,22 @@ var socket = (function() {
       // add player to redis set
       rc.sadd('players', uid, function(err, res) {
         // init player
-        player = game.players[uid] = new game.Player(socket, rc);
+        var player = game.players[uid] = new game.Player();
+
+        // TODO: iterate over all attributes of Player?
+        var attr = 'player:' + uid + ':ship:x';
+
+        // sync state to redis
+        rc.get(attr, function(err, res) {
+          if (err) { throw err; }
+
+          // init state if not in redis already
+          if (res !== null) {
+            player.ship.x = res;
+          } else {
+            rc.set(attr, player.ship.x, function(err, res) {});
+          }
+        });
 
         // TODO: send full player list to new connection
         // but only send new player to existing connections
@@ -34,6 +49,10 @@ var socket = (function() {
           redisSub: game.redis.sub,
           redisClient: game.redis.store
         }));
+
+        // delete active player set
+        // remove players who were still connected when server shut down
+        game.redis.store.del('players', function(err, res) {});
       });
 
       // socket.io client event listeners

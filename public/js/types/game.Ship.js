@@ -14,7 +14,7 @@ var ship = (function(game) {
 
 	game.Ship.prototype.setDefaults = function() {
 		this.fireButtonReleased = true;
-		this.image =  new game.Image('images/ship.png'),
+		this.image = new game.Image('images/ship.png'),
 		this.missiles = [],
 		this.now = 0;
 		this.then = 0;

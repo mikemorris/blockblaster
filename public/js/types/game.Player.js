@@ -10,7 +10,8 @@ var player = (function(game) {
 
     // init from existing state
     if (player) {
-      this.ship.x = player.ship.x;
+      // TODO: why is this passed as a string?
+      this.ship.x = parseInt(player.ship.x);
     }
 	};
 
