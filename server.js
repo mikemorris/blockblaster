@@ -1,9 +1,12 @@
 var app = require('http').createServer(handler);
 
-var redis = require('redis');
 var async = require('async');
+var redis = require('redis');
+var sio = require('socket.io');
+
 var static = require('node-static');
 var underscore = require('underscore');
+
 var config = require('./config');
 
 // init global game object
@@ -26,11 +29,11 @@ GAME.core = require('./public/js/game.core')(GAME);
 
 // require server game modules, init using dependency injection if required
 GAME.redis = require('./server/game.redis').init(redis, config);
-GAME.socket = require('./server/game.socket').init(app, redis, config, GAME);
+GAME.socket = require('./server/game.socket').init(app, async, redis, sio, config, GAME);
 
 // require server loops
 GAME.physics = require('./server/game.physics').init(GAME);
-GAME.update = require('./server/game.update').init(redis, async, GAME, underscore);
+GAME.update = require('./server/game.update').init(async, redis, GAME, underscore);
 
 // http config
 var file = new (static.Server)('./public');
