@@ -1,6 +1,18 @@
 var socket = (function() {
   var module = {
 
+    add: function(io, socket, rc, uid, game) {
+      var data = {};
+      data.uid = uid;
+      data.player = game.players[uid];
+
+      // only send new player to existing connections
+      io.sockets.emit('players:add', data);
+
+      // send full player list to new connection
+      io.sockets.socket(socket.id).emit('players', game.players);
+    },
+
     player: function(io, socket, rc, uid, game) {
       // store uid in the socket session for this client
       socket.uid = uid;
@@ -16,6 +28,8 @@ var socket = (function() {
         // TODO: iterate over all attributes of Player?
         var attr = 'player:' + uid + ':ship:x';
 
+        // TODO: async flow control here
+        // broadcast players after redis sync
         // sync state to redis
         rc.get(attr, function(err, res) {
           if (err) { throw err; }
@@ -23,14 +37,13 @@ var socket = (function() {
           // init state if not in redis already
           if (res !== null) {
             player.ship.x = res;
+            module.add(io, socket, rc, uid, game);
           } else {
-            rc.set(attr, player.ship.x, function(err, res) {});
+            rc.set(attr, player.ship.x, function(err, res) {
+              module.add(io, socket, rc, uid, game);
+            });
           }
         });
-
-        // TODO: send full player list to new connection
-        // but only send new player to existing connections
-        io.sockets.emit('players', game.players);
       });
     },
 

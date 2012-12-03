@@ -18,18 +18,16 @@ window.GAME = window.GAME || {};
         for (var i = 0; i < length; i++) {
           uid = players[i];
           game.scenes.level_1.players[uid] = new game.Player(data[uid]);
-          console.log(game.scenes.level_1.players[uid]);
         }
-      });
 
-      socket.on('players:add', function(data) {
-        console.log(data);
-        game.scenes.level_1.players[data.uid] = data.player;
-      });
+        // bind add/remove listeners after init
+        socket.on('players:add', function(data) {
+          game.scenes.level_1.players[data.uid] = new game.Player(data.player);
+        });
 
-      socket.on('players:remove', function(uid) {
-        console.log(uid);
-        delete game.scenes.level_1.players[uid];
+        socket.on('players:remove', function(uid) {
+          delete game.scenes.level_1.players[uid];
+        });
       });
 
       // set socket.uid before processing updates
