@@ -1,6 +1,17 @@
-window.GAME = window.GAME || {};
-
-(function(game) {
+(function(root, factory) {
+  // export module or attach to window
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory(require('../../../core/types/game.Object'));
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(['game'], factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.returnExports = factory(root.GAME || {});
+    // window.GAME.core = factory(window.GAME || {});
+  }
+})(this, function(game) {
 
 	game.scenes = game.scenes || {};
 
@@ -107,4 +118,4 @@ window.GAME = window.GAME || {};
 		}
 	};
 
-})(window.GAME);
+});

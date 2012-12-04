@@ -26,6 +26,10 @@ GAME = require('./core/types/game.Player')(GAME);
 // TODO: move core game and type files out of public folder
 // TODO: build script to concatenate public js assets
 GAME.core = require('./public/js/game.core')(GAME);
+GAME.level = require('./public/js/scenes/game.scenes.level_1.js');
+
+// load scene
+GAME.core.loadScene('level_1');
 
 // require server game modules, init using dependency injection if required
 GAME.redis = require('./server/game.redis').init(redis, config);
