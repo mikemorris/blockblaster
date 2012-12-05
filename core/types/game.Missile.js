@@ -13,9 +13,7 @@ var missile = (function(game) {
 		this.set(properties);
 
     // circular dependency
-		// this.ship = ship;
-
-		ship.missiles.push(this);
+    this.ship = ship;
 	};
 
 	game.Missile.prototype = new game.Rectangle();

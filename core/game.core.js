@@ -1,17 +1,18 @@
-var core = (function(game) {
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory();
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    // window.GAME.core = factory(window.GAME || {});
+    root.GAME.returnExports = factory(root.GAME || {});
+  }
+})(this, function(game) {
+
 	var module = {
-
-		clearCanvas: function() {
-			game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
-		},
-
-		createCanvas: function(width, height) {
-			game.canvas = document.createElement('canvas');
-			game.ctx = game.canvas.getContext('2d');
-			game.canvas.width = width;
-			game.canvas.height = height;
-			document.getElementById('canvas-wrapper').appendChild(game.canvas);
-		},
 
     // linear interpolation
     lerp: function(prev, next, time) {
@@ -113,17 +114,13 @@ var core = (function(game) {
 		},
 
 		loadScene: function(name) {
+      /*
 			game.scene = game.scenes[name];
 			game.scene.init();
+      */
 		}
 	};
 
   return module;
-});
 
-// export module or attach to window
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = core;
-} else {
-  window.GAME.core = core(window.GAME || {});
-}
+});

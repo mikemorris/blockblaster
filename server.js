@@ -15,26 +15,21 @@ var GAME = {};
 // TODO: merge this into Player module?
 GAME.players = {};
 
-// syncronously augment GAME.prototype
-GAME = require('./core/types/game.Object')(GAME);
-GAME = require('./core/types/game.Rectangle')(GAME);
-GAME = require('./core/types/game.Missile')(GAME);
-GAME = require('./core/types/game.Ship')(GAME);
-GAME = require('./core/types/game.Player')(GAME);
-
 // require core game modules
 // TODO: move core game and type files out of public folder
 // TODO: build script to concatenate public js assets
-GAME.core = require('./public/js/game.core')(GAME);
-GAME.level = require('./public/js/scenes/game.scenes.level_1.js');
+GAME.core = require('./core/game.core');
 
 // load scene
-GAME.core.loadScene('level_1');
+// GAME.core.loadScene('levels').loadLevel(1);
 
 // require server game modules, init using dependency injection if required
 GAME.redis = require('./server/game.redis').init(redis, config);
 GAME.socket = require('./server/game.socket').init(app, async, redis, sio, config, GAME);
 
+GAME.levels = require('./core/game.levels.js').init(GAME.redis.store);
+
+// TODO: init server loops inside levels?
 // require server loops
 GAME.physics = require('./server/game.physics').init(GAME);
 GAME.update = require('./server/game.update').init(async, redis, GAME, underscore);

@@ -18,9 +18,10 @@ var socket = (function() {
       });
 
       // TODO: scale this correctly to only remove players from offline servers
-      // delete active player set
+      // delete active player and NPC set
       // remove players who were still connected when server shut down
       game.redis.store.del('players', function(err, res) {});
+      game.redis.store.del('npcs', function(err, res) {});
 
       return io;
     },
@@ -81,6 +82,7 @@ var socket = (function() {
       });
     },
 
+    // TODO: entity id for enemies?
     add: function(io, socket, rc, uid, game) {
       var data = {};
       data.uid = uid;

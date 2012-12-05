@@ -1,4 +1,19 @@
-var player = (function(game) {
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({
+      'core': require('../game.core'),
+      'Object': require('./game.Object')
+    });
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    // window.GAME.core = factory(window.GAME || {});
+    root.GAME.returnExports = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
   // constructor
 	game.Player = function(player) {
@@ -16,12 +31,6 @@ var player = (function(game) {
 
 	game.Player.prototype = new game.Object();
 
-  return game;
-});
+  return game.Player;
 
-// export module or attach to window
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = player;
-} else {
-  player(window.GAME || {});
-}
+});

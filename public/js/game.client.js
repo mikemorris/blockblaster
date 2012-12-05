@@ -1,8 +1,32 @@
-window.GAME = window.GAME || {};
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({
+      'core': require('./game.core'),
+      'canvas': require('./game.canvas'),
+      'Object': require('./types/game.Object'),
+      'Rectangle': require('./types/game.Rectangle'),
+      'Missile': require('./types/game.Missile'),
+      'Ship': require('./types/game.Ship'),
+      'Player': require('./types/game.Player')
+    });
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define([
+      'Object',
+      'Rectangle',
+      'Missile',
+      'Ship',
+      'Player'
+    ], factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.returnExports = factory(root.GAME || {});
+    // window.GAME.core = factory(window.GAME || {});
+  }
+})(this, function(game) {
 
-(function(game) {
-
-	var client = game.client = {
+	return {
 		init: function() {
       var socket = game.socket = io.connect();
 
@@ -127,4 +151,4 @@ window.GAME = window.GAME || {};
 		}
 	};
 
-})(window.GAME);
+});
