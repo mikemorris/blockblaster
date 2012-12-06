@@ -62,6 +62,7 @@
 
 		this.x += this.vx * this.direction * time.delta;
 
+    // missile impact
 		if(this.isHit) {
 			this.y += this.vy * time.delta;
 			this.rotation += 20 * time.delta;

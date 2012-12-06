@@ -24,8 +24,7 @@
     return this;
   };
 
-  /*
-  this.checkCollisions = function(npc) {
+  var checkCollisions = function(npc) {
     for (var i = scene.missiles.length; i--;) {
       var missile = scene.missiles[i];
 
@@ -36,7 +35,15 @@
       }
     }
   };
-  */
+
+  this.updateMissiles = function(missiles) {
+    for (var i = missiles.length; i--;) {
+      var missile = missiles[i];
+      if(missile.isLive) {
+        missile.move();
+      }
+    }
+  };
 
   var updatePlayers = function() {
     var players = Object.keys(scene.players);
@@ -48,33 +55,33 @@
       uid = players[i];
       player = scene.players[uid];
 
-      // this.updateMissles(player.ship.missiles);
-
       // set position authoritatively for all players
       player.ship.respondToInput();
       player.ship.move(game.time);
+
+      this.updateMissiles(player.ship.missiles);
+      // this.checkCollisions(missile, npcs);
     }
   };
 
-  // TODO: move destroyed logic to server
   var updateNPCs = function(store) {
     var anyDestroyed = false;
 
     // TODO: is this loop syntax faster?
     for (var i = game.levels.npcs.length; i--;) {
-      (function(i) {
-        var npc = game.levels.npcs[i];
+      var npc = game.levels.npcs[i];
 
-        if(npc.isDestroyed) {
-          anyDestroyed = true;
-          delete game.levels.npcs[i];
-        } else {
-          // scene.checkCollisions(npc);
-          npc.move(game.time, function() {
-            store.set('npc:' + i + ':x', npc.x, function(err, res) {});
-          });
-        }
-      })(i);
+      if(npc.isDestroyed) {
+        anyDestroyed = true;
+        delete game.levels.npcs[i];
+
+        // TODO: flag enemy as destroyed in redis
+        // store.set('npc:' + i + ':x', npc.x, function(err, res) {});
+      } else {
+        npc.move(game.time, (function(i) {
+          store.set('npc:' + i + ':x', npc.x, function(err, res) {});
+        })(i));
+      }
     }
 
     if(anyDestroyed) {
@@ -86,8 +93,6 @@
         game.levels.loadNPCs();
       }
     }
-
-    // console.log(game.levels.npcs[0]);
   };
 
   var loop = function(store) {

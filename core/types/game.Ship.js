@@ -19,6 +19,10 @@
 		this.set(properties);
 		this.setDefaults();
 		this.loadMissiles();
+
+    // interpolation queue
+    this.queue = {};
+    this.queue.server = [];
 	};
 
 	game.Ship.prototype = new game.Object();
