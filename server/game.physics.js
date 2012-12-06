@@ -3,15 +3,11 @@
     // Node.js
     module.exports = factory({
       'core': require('../core/game.core'),
+      'time': require('../core/game.time'),
       'levels': require('../core/game.levels')
     });
   }
 })(this, function(game) {
-
-  // init physics time
-  var time = {
-    then: Date.now()
-  };
 
   // commands to be processed
   var queue = [];
@@ -56,7 +52,7 @@
 
       // set position authoritatively for all players
       player.ship.respondToInput();
-      player.ship.move(this.time);
+      player.ship.move(game.time);
     }
   };
 
@@ -66,7 +62,7 @@
 
     // TODO: is this loop syntax faster?
     for (var i = game.levels.npcs.length; i--;) {
-      (function(time, i) {
+      (function(i) {
         var npc = game.levels.npcs[i];
 
         if(npc.isDestroyed) {
@@ -74,11 +70,11 @@
           delete game.levels.npcs[i];
         } else {
           // scene.checkCollisions(npc);
-          npc.move(time, function() {
+          npc.move(game.time, function() {
             store.set('npc:' + i + ':x', npc.x, function(err, res) {});
           });
         }
-      })(this.time, i);
+      })(i);
     }
 
     if(anyDestroyed) {
@@ -96,9 +92,9 @@
 
   var loop = function(store) {
     // TODO: integrate into game.client.setDelta?
-    this.time.now = Date.now();
-    this.time.delta = (this.time.now - this.time.then) / 1000;
-    this.time.then = this.time.now;
+    game.time.now = Date.now();
+    game.time.delta = (game.time.now - game.time.then) / 1000;
+    game.time.then = game.time.now;
 
     // update npc and object positions
     this.updateNPCs(store);
@@ -107,7 +103,7 @@
     // no input to process
     if (!this.queue.length) return;
 
-    (function iterate(time, queue, processed, move) {
+    (function iterate(queue, processed, move) {
       process.nextTick(function() {
         var vector;
         var vx;
@@ -116,8 +112,8 @@
         // calculate delta time vector
         vector = game.core.getVelocity(move.input);
 
-        vx = parseInt(move.data.speed * time.delta * vector.dx);
-        vy = parseInt(move.data.speed * time.delta * vector.dy);
+        vx = parseInt(move.data.speed * game.time.delta * vector.dx);
+        vy = parseInt(move.data.speed * game.time.delta * vector.dy);
 
         // pipe valid commands directly to redis
         // passing a negative value to redis.incrby() decrements
@@ -134,13 +130,12 @@
 
         // if queue empty, stop looping
         if (!queue.length) return;
-        iterate(time, queue, processed, queue.shift());
+        iterate(queue, processed, queue.shift());
       });
-    })(this.time, this.queue, this.processed, this.queue.shift());
+    })(this.queue, this.processed, this.queue.shift());
   }
 
   return {
-    time: time,
     queue: queue,
     processed: processed,
     init: init,

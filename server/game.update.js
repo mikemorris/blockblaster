@@ -3,6 +3,7 @@
     // Node.js
     module.exports = factory(
       {
+        'time': require('../core/game.time'),
         'levels': require('../core/game.levels'),
         'physics': require('./game.physics')
       },
@@ -102,7 +103,7 @@
 
   var update = function(socket, data) {
     // server time stamp
-    data.time = game.physics.time.now;
+    data.time = game.time.now;
 
     console.log(data);
 
