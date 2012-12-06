@@ -22,8 +22,6 @@
   var init = function(store) {
     this.loadEnemies(store);
 
-    // TODO: init npcs in redis
-
     return this;
   };
 

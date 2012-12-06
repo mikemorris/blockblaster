@@ -1,27 +1,28 @@
 (function(root, factory) {
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
-    module.exports = factory();
-  } else if (typeof define === 'function' && define.amd) {
-    // AMD
-    define(factory);
-  } else {
-    // browser globals (root is window)
-    root.GAME.returnExports = factory(root.GAME || {});
-    // window.GAME.core = factory(window.GAME || {});
+    module.exports = factory(
+      {
+        'levels': require('../core/game.levels'),
+        'physics': require('./game.physics')
+      },
+      require('async'),
+      require('redis'),
+      require('underscore')
+    );
   }
-})(this, function(game) {
+})(this, function(game, async, redis, _) {
 
-  var init = function(async, redis, game, _) {
+  var init = function(socket, store) {
     // init server update loop, fixed time step in milliseconds
     setInterval((function() {
-      this.loop(async, redis, game, _);
+      this.loop(socket, store);
     }).bind(this), 45);
 
     return this;
   };
 
-  var updatePlayers = function(async, store, data, game, _, callback) {
+  var updatePlayers = function(store, data, callback) {
     store.smembers('players', function(err, res) {
       var players = res;
       var length = players.length;
@@ -32,7 +33,7 @@
       async.forEach(
         players,
         function(uid, callback) {
-          updatePlayer(store, uid, data, game, _, callback);
+          updatePlayer(store, uid, data, callback);
         }, function() {
           // notify async that iterator has completed
           if (typeof callback === 'function') callback();
@@ -41,7 +42,7 @@
     });
   };
 
-  var updatePlayer = function(store, uid, data, game, _, callback) {
+  var updatePlayer = function(store, uid, data, callback) {
     // defer to redis for absolute state
     store.get('player:' + uid + ':ship:x', function(err, res) {
       var x = parseInt(res);
@@ -61,7 +62,7 @@
     });
   };
 
-  var updateNPCs = function(async, store, data, game, _, callback) {
+  var updateNPCs = function(store, data, callback) {
     store.lrange('npcs', 0, -1, function(err, res) {
       var npcs = res;
       var length = npcs.length;
@@ -70,7 +71,7 @@
       async.forEach(
         npcs,
         function(index, callback) {
-          updateNPC(store, index, data, game, _, callback);
+          updateNPC(store, index, data, callback);
         }, function() {
           // notify async that iterator has completed
           if (typeof callback === 'function') callback();
@@ -79,7 +80,7 @@
     });
   };
 
-  var updateNPC = function(store, index, data, game, _, callback) {
+  var updateNPC = function(store, index, data, callback) {
     // defer to redis for absolute state
     store.get('npc:' + index + ':x', function(err, res) {
       var x = parseInt(res);
@@ -99,18 +100,17 @@
     });
   };
 
-  var update = function(game, data) {
+  var update = function(socket, data) {
     // server time stamp
     data.time = game.physics.time.now;
 
     console.log(data);
 
     // return delta object to client
-    game.socket.io.sockets.emit('state:update', data);
+    socket.io.sockets.emit('state:update', data);
   };
 
-  var loop = function(async, redis, game, _) {
-    var store = game.redis.store;
+  var loop = function(socket, store) {
     var physics = game.physics;
 
     // create data object containing
@@ -126,10 +126,10 @@
     }
 
     async.parallel([
-      function(callback) { updatePlayers(async, store, data, game, _, callback) },
-      function(callback) { updateNPCs(async, store, data, game, _, callback) }
+      function(callback) { updatePlayers(store, data, callback) },
+      function(callback) { updateNPCs(store, data, callback) }
     ], function() {
-      update(game, data);
+      update(socket, data);
     });
 
   };

@@ -48,6 +48,30 @@
       });
     });
 
+    socket.on('npcs', function(data) {
+      var npcs = Object.keys(data);
+      var length = npcs.length;
+      var index;
+
+      // init NPCs using data from server
+      for (var i = 0; i < length; i++) {
+        index = npcs[i];
+        npc = data[index];
+        game.npcs[index] = new game.Enemy(npc.x, npc.y, npc.direction);
+      }
+
+      /*
+      // bind add/remove listeners after init
+      socket.on('npcs:add', function(data) {
+        game.npcs[data.index] = new game.Enemy(data.enemy);
+      });
+
+      socket.on('npcs:remove', function(index) {
+        delete game.npcs[index];
+      });
+      */
+    });
+
     // set socket.uid before processing updates
     socket.on('uid', function(data) {
       game.uid = data;
@@ -57,6 +81,7 @@
         game.time.server = data.time;
         game.time.client = game.time.server - game.offset;
 
+        // update players
         var players = Object.keys(data.players);
         var length = players.length;
 
@@ -98,6 +123,45 @@
             }
           }
         }
+
+        // update players
+        var npcs = Object.keys(data.npcs);
+        var length_npc = npcs.length;
+
+        var index;
+        var npc;
+        var client_npc;
+
+        // update server state, interpolate foreign entities
+        if (length_npc) {
+
+          for (var i = 0; i < length_npc; i++) {
+            index = npcs[i];
+            npc = data.npcs[index];
+
+            // authoritatively set internal state if player exists on client
+            client_npc = game.npcs[index];
+
+            if (client_npc) {
+              // update last acknowledged input
+              if (data.ack) {
+                client_npc.ack = data.ack;
+              }
+
+              client_npc.sx = parseInt(npc.x);
+              client_npc.sy = parseInt(npc.y);
+
+              // queue server updates for entity interpolation
+              client_npc.queue.server.push(npc);
+              
+              // splice array, keeping BUFFER_SIZE most recent items
+              if (client_npc.queue.server.length >= game.buffersize) {
+                client_npc.queue.server.splice(-game.buffersize);
+              }
+            }
+          }
+        }
+
       });
     });
 
@@ -203,7 +267,7 @@
         delete game.npcs[i];
       } else {
         // game.checkCollisions(npc);
-        npc.move();
+        npc.interpolate();
         npc.draw();
       }
     }

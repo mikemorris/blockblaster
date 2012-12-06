@@ -1,8 +1,14 @@
-var game = {};
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory(
+      require('redis'),
+      require('../config')
+    );
+  }
+})(this, function(redis, config) {
 
-game.redis = {
-
-  init: function(redis, config) {
+  var init = function() {
     // redis client config
     var port = config.redis.port;
     var host = config.redis.host;
@@ -23,8 +29,10 @@ game.redis = {
       sub: sub,
       store: store
     };
-  },
+  };
 
-}
+  return {
+    init: init
+  }
 
-module.exports = game.redis;
+});

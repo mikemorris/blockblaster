@@ -19,10 +19,10 @@
   // processed command ids for client ack
   var processed = [];
 
-  var init = function(game) {
+  var init = function(store) {
     // init physics loop, fixed time step in milliseconds
     setInterval((function() {
-      this.loop(game);
+      this.loop(store);
     }).bind(this), 15);
 
     return this;
@@ -94,9 +94,7 @@
     // console.log(game.levels.npcs[0]);
   };
 
-  var loop = function(game) {
-    var store = game.redis.store;
-
+  var loop = function(store) {
     // TODO: integrate into game.client.setDelta?
     this.time.now = Date.now();
     this.time.delta = (this.time.now - this.time.then) / 1000;

@@ -21,7 +21,12 @@ window.GAME = window.GAME || {};
 				y: y
 			}
 		};
+
 		this.set(properties);
+
+    // interpolation queue
+    this.queue = {};
+    this.queue.server = [];
 	};
 
 	game.Enemy.prototype = new game.Object();
@@ -59,5 +64,57 @@ window.GAME = window.GAME || {};
 			}
 		}
 	};
+
+  game.Enemy.prototype.interpolate = function() {
+    // entity interpolation
+    var difference = Math.abs(this.sx - this.x);
+
+    // return if no server updates to process
+    if (!this.queue.server.length || difference < 0.1) return;
+
+    var x;
+    var vx;
+
+    var target
+    var current;
+
+    var count = game.queue.server.length - 1;
+
+    var prev;
+    var next;
+
+    for(var i = 0; i < count; i++) {
+      prev = this.queue.server[i];
+      next = this.queue.server[i + 1];
+
+      // if client offset time is between points, set target and break
+      if(game.time.client > prev.time && game.time.client < next.time) {
+        target = prev;
+        current = next;
+        break;
+      }
+    }
+
+    // no interpolation target found, snap to most recent state
+    if(!target) {
+      target = current = this.queue.server[this.queue.server.length - 1];
+    }
+
+    // calculate client time percentage between current and target points
+    var time_point = 0;
+
+    if (target.time !== current.time) {
+      var difference = target.time - game.time.client;
+      var spread = target.time - current.time;
+      time_point = difference / spread;
+    }
+
+    // interpolated position
+    // TODO: jump to position if large delta
+    x = game.core.lerp(current.x, target.x, time_point);
+
+    // apply smoothing
+    this.x = game.core.lerp(this.x, x, game.client.delta * game.smoothing);
+  };
 
 })(window.GAME);

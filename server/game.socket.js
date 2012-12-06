@@ -1,21 +1,21 @@
 (function(root, factory) {
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
-    module.exports = factory({
-      'physics': require('./game.physics'),
-      'levels': require('../core/game.levels'),
-      'Player': require('../core/types/game.Player')
-    });
-  } else if (typeof define === 'function' && define.amd) {
-    // AMD
-    define(factory);
-  } else {
-    // browser globals (root is window)
-    root.GAME.socket = factory(root.GAME || {});
+    module.exports = factory(
+      {
+        'physics': require('./game.physics'),
+        'levels': require('../core/game.levels'),
+        'Player': require('../core/types/game.Player')
+      },
+      require('async'),
+      require('redis'),
+      require('socket.io'),
+      require('../config')
+    );
   }
-})(this, function(game) {
+})(this, function(game, async, redis, sio, config) {
 
-  var config = function(app, redis, sio, game) {
+  var init = function(app, channel) {
     var RedisStore = sio.RedisStore;
     var io = sio.listen(app);
 
@@ -25,22 +25,26 @@
     // socket.io config
     io.configure(function() {
       io.set('store', new RedisStore({
-        redisPub: game.redis.pub,
-        redisSub: game.redis.sub,
-        redisClient: game.redis.store
+        redisPub: channel.pub,
+        redisSub: channel.sub,
+        redisClient: channel.store
       }));
     });
 
     // TODO: scale this correctly to only remove players from offline servers
     // delete active player and NPC set
     // remove players who were still connected when server shut down
-    game.redis.store.del('players', function(err, res) {});
-    game.redis.store.del('npcs', function(err, res) {});
+    channel.store.del('players', function(err, res) {});
+    channel.store.del('npcs', function(err, res) {});
 
-    return io;
+    this.listen(io);
+
+    return {
+      io: io
+    };
   };
 
-  var listen = function(redis, io, config) {
+  var listen = function(io) {
     // socket.io client event listeners
     io.sockets.on('connection', function(socket) {
       var player;
@@ -107,6 +111,7 @@
 
     // send full player list to new connection
     io.sockets.socket(socket.id).emit('players', game.levels.players);
+    io.sockets.socket(socket.id).emit('npcs', game.levels.npcs);
   };
 
   var addPlayer = function(io, socket, rc, uid) {
@@ -142,17 +147,7 @@
     });
   };
 
-  var init = function(app, async, redis, sio, config, game) {
-    var io = this.config(app, redis, sio, game);
-    this.listen(redis, io, config);
-
-    return {
-      io: io
-    };
-  };
-
   return {
-    config: config,
     listen: listen,
     add: add,
     addPlayer: addPlayer,
