@@ -7,6 +7,7 @@
     define(factory);
   } else {
     // browser globals (root is window)
+    root.GAME = root.GAME || {};
     root.GAME.client = factory(root.GAME || {});
   }
 })(this, function(game) {

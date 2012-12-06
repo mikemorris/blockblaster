@@ -12,11 +12,12 @@
     define(factory);
   } else {
     // browser globals (root is window)
+    root.GAME = root.GAME || {};
     root.GAME.Ship = factory(root.GAME || {});
   }
 })(this, function(game) {
 
-	game.Ship = function(properties) {
+	var Ship = function(properties) {
 		this.set(properties);
 		this.setDefaults();
 		this.loadMissiles();
@@ -26,10 +27,11 @@
     this.queue.server = [];
 	};
 
-	game.Ship.prototype = new game.Entity();
+	Ship.prototype = new game.Entity();
 
-	game.Ship.prototype.setDefaults = function() {
+	Ship.prototype.setDefaults = function() {
 		this.fireButtonReleased = true;
+		this.image = game.Image ? new game.Image('images/ship.png') : false,
 		this.missiles = [];
 		this.now = 0;
 		this.then = 0;
@@ -43,18 +45,13 @@
     this.x = game.canvas ? game.canvas.width / 2 - this.width / 2 : 0;
     this.y = game.canvas ? game.canvas.height - this.height - 25 : 0;
 
-    // TODO: client side only
-    if (typeof module === 'undefined' && !module.exports) {
-      this.image = new game.Image('images/ship.png');
-    }
-
 		// user defineable settings
 		this.speed = this.speed || 300;
 		this.maxMissiles = this.maxMissiles || 3;
 		this.repeatRate = this.repeatRate || 30;
 	};
 
-	game.Ship.prototype.respondToInput = function() {
+	Ship.prototype.respondToInput = function() {
 		var pressed = game.input.pressed;
     var vector = game.core.getVelocity(pressed);
     var input;
@@ -85,11 +82,11 @@
     }
 	};
 
-	game.Ship.prototype.move = function() {
+	Ship.prototype.move = function() {
 		this.x += this.vx;
 	};
 
-  game.Ship.prototype.reconcile = function() {
+  Ship.prototype.reconcile = function() {
     // server reconciliation
     var dx = 0;
     var dy = 0;
@@ -118,7 +115,59 @@
     this.x = this.sx + vx;
   };
 
-	game.Ship.prototype.loadMissiles = function() {
+  Ship.prototype.interpolate = function() {
+    // entity interpolation
+    var difference = Math.abs(this.sx - this.x);
+
+    // return if no server updates to process
+    if (!this.queue.server.length || difference < 0.1) return;
+
+    var x;
+    var vx;
+
+    var target
+    var current;
+
+    var count = game.queue.server.length - 1;
+
+    var prev;
+    var next;
+
+    for(var i = 0; i < count; i++) {
+      prev = this.queue.server[i];
+      next = this.queue.server[i + 1];
+
+      // if client offset time is between points, set target and break
+      if(game.time.client > prev.time && game.time.client < next.time) {
+        target = prev;
+        current = next;
+        break;
+      }
+    }
+
+    // no interpolation target found, snap to most recent state
+    if(!target) {
+      target = current = this.queue.server[this.queue.server.length - 1];
+    }
+
+    // calculate client time percentage between current and target points
+    var timePoint = 0;
+
+    if (target.time !== current.time) {
+      var difference = target.time - game.time.client;
+      var spread = target.time - current.time;
+      timePoint = difference / spread;
+    }
+
+    // interpolated position
+    // TODO: jump to position if large delta
+    x = game.core.lerp(current.ship.x, target.ship.x, timePoint);
+
+    // apply smoothing
+    this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+  };
+
+	Ship.prototype.loadMissiles = function() {
 		var i = 0;
 		while(i < this.maxMissiles) {
 			this.missiles.push(new game.Missile(this));
@@ -126,21 +175,27 @@
 		}
 	};
 
-	game.Ship.prototype.fire = function() {
+	Ship.prototype.fire = function() {
 		this.now = game.time.now;
 		var fireDelta = (this.now - this.then)/1000;
-		var missilesLoaded = this.missiles.length > 0;
+
+    // filter by isLive
+    var missiles = _.filter(this.missiles, function(missile) {
+      return !missile.isLive;
+    });
+
+		var missilesLoaded = missiles.length > 0;
 		var gunIsCool = fireDelta > 1 / this.repeatRate;
 		var readyToFire = gunIsCool && missilesLoaded && this.fireButtonReleased;
 
 		if(readyToFire) {
 			this.fireButtonReleased = false;
-			this.missiles[0].fire();
+			missiles[0].fire();
 			this.then = this.now;
 		}
 	};
 
-	game.Ship.prototype.drawType = function() {
+	Ship.prototype.drawType = function() {
 		if(game.debug) {
 			// Show hit-area
 			game.ctx.fillStyle = 'rgba(0, 0, 255, 0.25)';
@@ -150,10 +205,10 @@
 		this.image.draw();
 	},
 
-	game.Ship.prototype.die = function() {
+	Ship.prototype.die = function() {
 		console.log('die!');
 	};
 
-  return game.Ship;
+  return Ship;
 
 });

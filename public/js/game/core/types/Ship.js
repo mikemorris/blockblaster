@@ -2,21 +2,22 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'core': require('../game.core'),
-      'time': require('../game.time.js'),
-      'Entity': require('./game.Entity'),
-      'Missile': require('./game.Missile')
+      'core': require('../core'),
+      'time': require('../time'),
+      'Entity': require('./Entity'),
+      'Missile': require('./Missile')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(factory);
   } else {
     // browser globals (root is window)
+    root.GAME = root.GAME || {};
     root.GAME.Ship = factory(root.GAME || {});
   }
 })(this, function(game) {
 
-	game.Ship = function(properties) {
+	var Ship = function(properties) {
 		this.set(properties);
 		this.setDefaults();
 		this.loadMissiles();
@@ -26,12 +27,12 @@
     this.queue.server = [];
 	};
 
-	game.Ship.prototype = new game.Entity();
+	Ship.prototype = new game.Entity();
 
-	game.Ship.prototype.setDefaults = function() {
+	Ship.prototype.setDefaults = function() {
 		this.fireButtonReleased = true;
 		this.image = game.Image ? new game.Image('images/ship.png') : false,
-		this.missiles = [],
+		this.missiles = [];
 		this.now = 0;
 		this.then = 0;
 		this.rotation = 0; // radians
@@ -39,16 +40,18 @@
 		this.vx = 0;
 		this.height = 50;
 		this.width = 50;
-		this.x = game.canvas.width / 2 - this.width / 2;
-		this.y = game.canvas.height - this.height - 25;
 
-		// User defineable settings
+    // TODO: this should not depend on client side code
+    this.x = game.canvas ? game.canvas.width / 2 - this.width / 2 : 0;
+    this.y = game.canvas ? game.canvas.height - this.height - 25 : 0;
+
+		// user defineable settings
 		this.speed = this.speed || 300;
 		this.maxMissiles = this.maxMissiles || 3;
 		this.repeatRate = this.repeatRate || 30;
 	};
 
-	game.Ship.prototype.respondToInput = function() {
+	Ship.prototype.respondToInput = function() {
 		var pressed = game.input.pressed;
     var vector = game.core.getVelocity(pressed);
     var input;
@@ -79,12 +82,11 @@
     }
 	};
 
-	game.Ship.prototype.move = function() {
+	Ship.prototype.move = function() {
 		this.x += this.vx;
 	};
 
-  game.Ship.prototype.reconcile = function() {
-    // TODO: rewind timeline first to determine if reconciliation is necessary
+  Ship.prototype.reconcile = function() {
     // server reconciliation
     var dx = 0;
     var dy = 0;
@@ -113,7 +115,7 @@
     this.x = this.sx + vx;
   };
 
-  game.Ship.prototype.interpolate = function() {
+  Ship.prototype.interpolate = function() {
     // entity interpolation
     var difference = Math.abs(this.sx - this.x);
 
@@ -165,7 +167,7 @@
     this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
   };
 
-	game.Ship.prototype.loadMissiles = function() {
+	Ship.prototype.loadMissiles = function() {
 		var i = 0;
 		while(i < this.maxMissiles) {
 			this.missiles.push(new game.Missile(this));
@@ -173,7 +175,7 @@
 		}
 	};
 
-	game.Ship.prototype.fire = function() {
+	Ship.prototype.fire = function() {
 		this.now = game.time.now;
 		var fireDelta = (this.now - this.then)/1000;
 
@@ -193,7 +195,7 @@
 		}
 	};
 
-	game.Ship.prototype.drawType = function() {
+	Ship.prototype.drawType = function() {
 		if(game.debug) {
 			// Show hit-area
 			game.ctx.fillStyle = 'rgba(0, 0, 255, 0.25)';
@@ -203,10 +205,10 @@
 		this.image.draw();
 	},
 
-	game.Ship.prototype.die = function() {
+	Ship.prototype.die = function() {
 		console.log('die!');
 	};
 
-  return game.Ship;
+  return Ship;
 
 });

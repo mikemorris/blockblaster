@@ -2,20 +2,21 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'core': require('../game.core'),
-      'time': require('../game.time'),
-      'Entity': require('./game.Entity')
+      'core': require('../core'),
+      'time': require('../time'),
+      'Entity': require('./Entity')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(factory);
   } else {
     // browser globals (root is window)
+    root.GAME = root.GAME || {};
     root.GAME.Enemy = factory(root.GAME || {});
   }
 })(this, function(game) {
 
-	game.Enemy = function(x, y, direction) {
+	var Enemy = function(x, y, direction) {
 		var properties = {
       image: (game.Image ? new game.Image('images/enemy.png') : false),
 			color: 'rgba(0, 0, 255, 0.25)',
@@ -42,15 +43,15 @@
     this.queue.server = [];
 	};
 
-	game.Enemy.prototype = new game.Entity();
+	Enemy.prototype = new game.Entity();
 
-	game.Enemy.prototype.destroy = function() {
+	Enemy.prototype.destroy = function() {
 		this.isHit = true;
 		this.vy = -200;
 		// this.isDestroyed = true;
 	};
 
-	game.Enemy.prototype.drawType = function() {
+	Enemy.prototype.drawType = function() {
 		if(game.debug) {
 			if(this.isDestroyed) {
 				this.color = 'red';
@@ -63,7 +64,7 @@
 		this.image.draw();
 	};
 
-	game.Enemy.prototype.move = function(callback) {
+	Enemy.prototype.move = function(callback) {
 
 		this.x += this.vx * this.direction * game.time.delta;
 
@@ -84,7 +85,7 @@
 
 	};
 
-  game.Enemy.prototype.interpolate = function() {
+  Enemy.prototype.interpolate = function() {
     // entity interpolation
     var difference = Math.abs(this.sx - this.x);
 
@@ -136,6 +137,6 @@
     this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
   };
 
-  return game.Enemy;
+  return Enemy;
 
 });

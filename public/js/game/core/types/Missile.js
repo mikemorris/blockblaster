@@ -2,19 +2,20 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'time': require('../game.time.js'),
-      'Rectangle': require('./game.Rectangle')
+      'time': require('../time.js'),
+      'Rectangle': require('./Rectangle')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(factory);
   } else {
     // browser globals (root is window)
+    root.GAME = root.GAME || {};
     root.GAME.Missile = factory(root.GAME || {});
   }
 })(this, function(game) {
 
-	game.Missile = function(ship) {
+	var Missile = function(ship) {
 		var properties = {
 			width: 10,
 			height: 20,
@@ -27,17 +28,17 @@
 		this.set(properties);
 
     // circular dependency
-		this.ship = ship;
+    this.ship = ship;
 	};
 
-	game.Missile.prototype = new game.Rectangle();
+	Missile.prototype = new game.Rectangle();
 
-	game.Missile.prototype.explode = function() {
+	Missile.prototype.explode = function() {
 		this.vy = 0;
 		this.reload();
 	};
 
-	game.Missile.prototype.fire = function() {
+	Missile.prototype.fire = function() {
 		this.x = this.ship.x + this.ship.width / 2 - this.width / 2;
 		this.y = this.ship.y;
 		this.vy = this.speed;
@@ -46,14 +47,14 @@
 		this.isLive = true;
 	};
 
-	game.Missile.prototype.move = function(direction) {
+	Missile.prototype.move = function(direction) {
 		this.y -= this.vy * game.time.delta;
 		if(this.y < (0 - this.height)) {
 			this.reload();
 		}
 	};
 
-	game.Missile.prototype.reload = function() {
+	Missile.prototype.reload = function() {
 		this.x = -this.height;
 		this.y = this.ship.y;
 
@@ -61,6 +62,6 @@
 		this.isLive = false;
 	};
 
-  return game.Missile;
+  return Missile;
 
 });
