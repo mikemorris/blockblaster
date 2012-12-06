@@ -1,14 +1,24 @@
-window.GAME = window.GAME || {};
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({});
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME = root.GAME || {};
+    root.GAME.Entity = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
-(function(game) {
-
-	game.Object = function(properties) {
+	var Entity = function(properties) {
 		if(properties) {
 			this.set(properties);
 		}
 	};
 
-	game.Object.prototype.set = function(properties){
+	Entity.prototype.set = function(properties){
 		for(var property in properties) {
 			this[property] = properties[property];
 		}
@@ -17,7 +27,7 @@ window.GAME = window.GAME || {};
 		this.scale = this.scale || 1;
 	};
 
-	game.Object.prototype.draw = function() {
+	Entity.prototype.draw = function() {
 		game.ctx.save();
 
 		// Round to whole pixel
@@ -30,10 +40,12 @@ window.GAME = window.GAME || {};
 		game.ctx.scale(this.scale, this.scale);
 		game.ctx.translate(-this.width/2, -this.height/2);
 
-		// Call extended Object Type's draw method
+		// Call extended Entity Type's draw method
 		this.drawType && this.drawType();
 
 		game.ctx.restore();
 	};
 
-})(window.GAME);
+  return Entity;
+
+});

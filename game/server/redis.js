@@ -3,7 +3,7 @@
     // Node.js
     module.exports = factory(
       require('redis'),
-      require('../config')
+      require('../../config')
     );
   }
 })(this, function(redis, config) {

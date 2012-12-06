@@ -3,9 +3,9 @@
     // Node.js
     module.exports = factory(
       {
-        'time': require('../core/game.time'),
-        'levels': require('../core/game.levels'),
-        'physics': require('./game.physics')
+        'levels': require('./levels'),
+        'physics': require('./physics'),
+        'time': require('../core/time')
       },
       require('async'),
       require('redis'),

@@ -6,7 +6,7 @@ window.GAME = window.GAME || {};
 		properties && this.set(properties);
 	};
 
-	game.Rectangle.prototype = new game.Object();
+	game.Rectangle.prototype = new game.Entity();
 
 	game.Rectangle.prototype.drawType = function() {
 		game.ctx.fillStyle = this.color;

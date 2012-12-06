@@ -2,8 +2,8 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'time': require('../game.time.js'),
-      'Rectangle': require('./game.Rectangle')
+      'time': require('../time.js'),
+      'Rectangle': require('./Rectangle')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
@@ -27,9 +27,7 @@
 		this.set(properties);
 
     // circular dependency
-		this.ship = ship;
-
-		// game.scene.missiles.push(this);
+    // this.ship = ship;
 	};
 
 	game.Missile.prototype = new game.Rectangle();

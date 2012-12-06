@@ -2,7 +2,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'Enemy': require('./types/game.Enemy.js')
+      'Enemy': require('../core/types/Enemy.js')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD

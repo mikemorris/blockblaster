@@ -3,7 +3,8 @@
     // Node.js
     module.exports = factory({
       'core': require('../game.core'),
-      'Object': require('./game.Object')
+      'time': require('../game.time'),
+      'Entity': require('./game.Entity')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
@@ -41,7 +42,7 @@
     this.queue.server = [];
 	};
 
-	game.Enemy.prototype = new game.Object();
+	game.Enemy.prototype = new game.Entity();
 
 	game.Enemy.prototype.destroy = function() {
 		this.isHit = true;
@@ -66,6 +67,7 @@
 
 		this.x += this.vx * this.direction * game.time.delta;
 
+    // missile impact
 		if(this.isHit) {
 			this.y += this.vy * game.time.delta;
 			this.rotation += 20 * game.time.delta;

@@ -3,14 +3,14 @@
     // Node.js
     module.exports = factory(
       {
-        'physics': require('./game.physics'),
-        'levels': require('../core/game.levels'),
-        'Player': require('../core/types/game.Player')
+        'physics': require('./physics'),
+        'levels': require('./levels'),
+        'Player': require('../core/types/Player')
       },
       require('async'),
       require('redis'),
       require('socket.io'),
-      require('../config')
+      require('../../config')
     );
   }
 })(this, function(game, async, redis, sio, config) {

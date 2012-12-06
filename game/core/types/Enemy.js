@@ -2,9 +2,9 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'core': require('../game.core'),
-      'time': require('../game.time'),
-      'Object': require('./game.Object')
+      'core': require('../core'),
+      'time': require('../time'),
+      'Entity': require('./Entity')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
@@ -42,7 +42,7 @@
     this.queue.server = [];
 	};
 
-	game.Enemy.prototype = new game.Object();
+	game.Enemy.prototype = new game.Entity();
 
 	game.Enemy.prototype.destroy = function() {
 		this.isHit = true;

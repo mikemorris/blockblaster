@@ -2,9 +2,9 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'core': require('../core/game.core'),
-      'time': require('../core/game.time'),
-      'levels': require('../core/game.levels')
+      'core': require('../core/core'),
+      'time': require('../core/time'),
+      'levels': require('./levels')
     });
   }
 })(this, function(game) {

@@ -8,7 +8,7 @@ window.GAME = window.GAME || {};
 		this.y = 0;
 	};
 
-	game.Image.prototype = new game.Object();
+	game.Image.prototype = new game.Entity();
 
 	game.Image.prototype.load = function(src) {
 		var thisImage = this;

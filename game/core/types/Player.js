@@ -2,9 +2,9 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'core': require('../game.core'),
-      'Object': require('./game.Object'),
-      'Ship': require('./game.Ship')
+      'core': require('../core'),
+      'Entity': require('./Entity'),
+      'Ship': require('./Ship')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
@@ -32,7 +32,7 @@
     return this;
 	};
 
-	game.Player.prototype = new game.Object();
+	game.Player.prototype = new game.Entity();
 
   return game.Player;
 

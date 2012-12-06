@@ -15,7 +15,7 @@ var player = (function(game) {
     }
 	};
 
-	game.Player.prototype = new game.Object();
+	game.Player.prototype = new game.Entity();
 
   return game;
 });

@@ -2,7 +2,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
-      'Object': require('./game.Object')
+      'Entity': require('./Entity')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
@@ -17,7 +17,7 @@
 		properties && this.set(properties);
 	};
 
-	game.Rectangle.prototype = new game.Object();
+	game.Rectangle.prototype = new game.Entity();
 
 	game.Rectangle.prototype.drawType = function() {
 		game.ctx.fillStyle = this.color;
