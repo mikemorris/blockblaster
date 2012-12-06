@@ -1,4 +1,17 @@
-var missile = (function(game) {
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({
+      'Rectangle': require('./game.Rectangle')
+    });
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.Missile = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
 	game.Missile = function(ship) {
 		var properties = {
@@ -13,7 +26,7 @@ var missile = (function(game) {
 		this.set(properties);
 
     // circular dependency
-    this.ship = ship;
+    // this.ship = ship;
 	};
 
 	game.Missile.prototype = new game.Rectangle();
@@ -46,12 +59,6 @@ var missile = (function(game) {
 		this.ship.missiles.push(this);
 	};
 
-  return game;
-});
+  return game.Missile;
 
-// export module or attach to window
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = missile;
-} else {
-  missile(window.GAME || {});
-}
+});

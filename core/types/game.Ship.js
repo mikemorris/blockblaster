@@ -1,4 +1,19 @@
-var ship = (function(game) {
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({
+      'core': require('../game.core'),
+      'Object': require('./game.Object'),
+      'Missile': require('./game.Missile')
+    });
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.Ship = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
 	game.Ship = function(properties) {
 		this.set(properties);
@@ -134,12 +149,6 @@ var ship = (function(game) {
 		console.log('die!');
 	};
 
-  return game;
-});
+  return game.Ship;
 
-// export module or attach to window
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ship;
-} else {
-  ship(window.GAME || {});
-}
+});

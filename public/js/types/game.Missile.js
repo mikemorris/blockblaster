@@ -14,7 +14,7 @@ window.GAME = window.GAME || {};
 
 		this.set(properties);
 		this.ship = ship;
-		game.scene.missiles.push(this);
+		// game.scene.missiles.push(this);
 	};
 
 	game.Missile.prototype = new game.Rectangle();

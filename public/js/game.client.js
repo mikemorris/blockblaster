@@ -1,154 +1,219 @@
 (function(root, factory) {
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
-    module.exports = factory({
-      'core': require('./game.core'),
-      'canvas': require('./game.canvas'),
-      'Object': require('./types/game.Object'),
-      'Rectangle': require('./types/game.Rectangle'),
-      'Missile': require('./types/game.Missile'),
-      'Ship': require('./types/game.Ship'),
-      'Player': require('./types/game.Player')
-    });
+    module.exports = factory();
   } else if (typeof define === 'function' && define.amd) {
     // AMD
-    define([
-      'Object',
-      'Rectangle',
-      'Missile',
-      'Ship',
-      'Player'
-    ], factory);
+    define(factory);
   } else {
     // browser globals (root is window)
-    root.GAME.returnExports = factory(root.GAME || {});
-    // window.GAME.core = factory(window.GAME || {});
+    root.GAME.client = factory(root.GAME || {});
   }
 })(this, function(game) {
 
-	return {
-		init: function() {
-      var socket = game.socket = io.connect();
+  this.init = function() {
 
-      socket.on('players', function(data) {
-        var players = Object.keys(data);
-        var length = players.length;
-        var uid;
+    // clear players object to purge disconnected ghosts
+    game.players = {};
+    game.npcs = [];
 
-        // clear players object to purge disconnected ghosts
-        game.scenes.level_1.players = {};
+    // set methods to run every frame
+    // TODO: decouple this asynchronously?
+    this.actions = [
+      this.clearCanvas,
+      this.updatePlayers,
+      this.updateNPCs
+    ];
 
-        // init players using data from server
-        for (var i = 0; i < length; i++) {
-          uid = players[i];
-          game.scenes.level_1.players[uid] = new game.Player(data[uid]);
-        }
+    var socket = game.socket = io.connect();
 
-        // bind add/remove listeners after init
-        socket.on('players:add', function(data) {
-          game.scenes.level_1.players[data.uid] = new game.Player(data.player);
-        });
+    socket.on('players', function(data) {
+      var players = Object.keys(data);
+      var length = players.length;
+      var uid;
 
-        socket.on('players:remove', function(uid) {
-          delete game.scenes.level_1.players[uid];
-        });
+      // init players using data from server
+      for (var i = 0; i < length; i++) {
+        uid = players[i];
+        game.players[uid] = new game.Player(data[uid]);
+      }
+
+      // bind add/remove listeners after init
+      socket.on('players:add', function(data) {
+        game.players[data.uid] = new game.Player(data.player);
       });
 
-      // set socket.uid before processing updates
-      socket.on('uid', function(data) {
-        game.uid = data;
+      socket.on('players:remove', function(uid) {
+        delete game.players[uid];
+      });
+    });
 
-        socket.on('state:update', function(data) {
-          // update server time
-          game.time.server = data.time;
-          game.time.client = game.time.server - game.offset;
+    // set socket.uid before processing updates
+    socket.on('uid', function(data) {
+      game.uid = data;
 
-          var players = Object.keys(data.players);
-          var length = players.length;
+      socket.on('state:update', function(data) {
+        // update server time
+        game.time.server = data.time;
+        game.time.client = game.time.server - game.offset;
 
-          var uid;
-          var player;
-          var client;
+        var players = Object.keys(data.players);
+        var length = players.length;
 
-          // update server state, interpolate foreign entities
-          if (length) {
+        var uid;
+        var player;
+        var client;
 
-            for (var i = 0; i < length; i++) {
-              uid = players[i];
-              player = data.players[uid];
+        // update server state, interpolate foreign entities
+        if (length) {
 
-              // authoritatively set internal state if player exists on client
-              client = game.scenes.level_1.players[uid];
+          for (var i = 0; i < length; i++) {
+            uid = players[i];
+            player = data.players[uid];
 
-              if (client && client.ship) {
-                // update last acknowledged input
-                if (data.ack) {
-                  client.ship.ack = data.ack;
-                }
+            // authoritatively set internal state if player exists on client
+            client = game.players[uid];
 
-                client.ship.sx = parseInt(player.ship.x);
-                client.ship.sy = parseInt(player.ship.y);
+            if (client && client.ship) {
+              // update last acknowledged input
+              if (data.ack) {
+                client.ship.ack = data.ack;
+              }
 
-                // reconcile client prediction with server
-                if (uid === game.uid) {
-                  client.ship.reconcile();
-                } else {
-                  // queue server updates for entity interpolation
-                  client.ship.queue.server.push(player);
-                  
-                  // splice array, keeping BUFFER_SIZE most recent items
-                  if (client.ship.queue.server.length >= game.buffersize) {
-                    client.ship.queue.server.splice(-game.buffersize);
-                  }
+              client.ship.sx = parseInt(player.ship.x);
+              client.ship.sy = parseInt(player.ship.y);
+
+              // reconcile client prediction with server
+              if (uid === game.uid) {
+                client.ship.reconcile();
+              } else {
+                // queue server updates for entity interpolation
+                client.ship.queue.server.push(player);
+                
+                // splice array, keeping BUFFER_SIZE most recent items
+                if (client.ship.queue.server.length >= game.buffersize) {
+                  client.ship.queue.server.splice(-game.buffersize);
                 }
               }
             }
           }
-        });
+        }
       });
+    });
 
-      // pause on blur doesnt make sense in multiplayer
-      /*
-			window.addEventListener('blur', client.pause, false);
-			window.addEventListener('focus', client.play, false);
-      */
-		},
+    // pause on blur doesnt make sense in multiplayer
+    /*
+    window.addEventListener('blur', client.pause, false);
+    window.addEventListener('focus', client.play, false);
+    */
+  };
 
-		loop: function() {
-			client.animationFrame = window.requestAnimationFrame(client.loop);
-			client.setDelta();
+  this.loop = function() {
+    this.animationFrame = window.requestAnimationFrame(this.loop);
+    this.setDelta();
 
-      // defined in scene
-			client.runFrameActions();
-		},
+    // defined in scene
+    this.runFrameActions();
+  };
 
-		pause: function() {
-			window.cancelAnimationFrame(client.animationFrame);
-			client.areRunning = false;
-		},
+  this.pause = function() {
+    window.cancelAnimationFrame(this.animationFrame);
+    this.areRunning = false;
+  };
 
-		play: function() {
-			if(!client.areRunning) {
-				client.then = Date.now();
+  this.play = function() {
+    if(!this.areRunning) {
+      this.then = Date.now();
 
-        // init animation loop, variable time step
-				client.loop();
+      // init animation loop, variable time step
+      this.loop();
 
-				client.areRunning = true;
-			}
-		},
+      this.areRunning = true;
+    }
+  };
 
-		runFrameActions: function() {
-			for (var i = 0; i < client.actions.length; i++) {
-				client.actions[i]();
-			}
-		},
+  this.runFrameActions = function() {
+    for (var i = 0; i < this.actions.length; i++) {
+      this.actions[i]();
+    }
+  };
 
-		setDelta: function() {
-			client.now = Date.now();
-			client.delta = (client.now - client.then) / 1000; // seconds since last frame
-			client.then = client.now;
-		}
-	};
+  this.setDelta = function() {
+    this.now = Date.now();
+    this.delta = (this.now - this.then) / 1000; // seconds since last frame
+    this.then = this.now;
+  };
+
+  this.clearCanvas = function() {
+    game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+  };
+
+  this.createCanvas = function(width, height) {
+    game.canvas = document.createElement('canvas');
+    game.ctx = game.canvas.getContext('2d');
+    game.canvas.width = width;
+    game.canvas.height = height;
+    document.getElementById('canvas-wrapper').appendChild(game.canvas);
+  };
+
+  this.updateMissles = function() {
+    for (var i = game.missiles.length; i--;) {
+      var missile = game.missiles[i];
+      if(missile.isLive) {
+        missile.move();
+        missile.draw();
+      }
+    }
+  };
+
+  this.updatePlayers = function() {
+    var players = Object.keys(game.players);
+    var length = players.length;
+    var uid;
+    var player;
+
+    for (var i = 0; i < length; i++) {
+      uid = players[i];
+      player = game.players[uid];
+
+      // this.updateMissles(player.ship.missiles);
+
+      // client prediction only for active player
+      if (uid === game.uid) {
+        player.ship.respondToInput();
+        player.ship.move();
+      } else {
+        // interpolate position of other players
+        player.ship.interpolate();
+      }
+
+      player.ship.draw();
+    }
+  };
+
+  // TODO: move destroyed logic to server
+  this.updateNPCs = function() {
+    var anyDestroyed = false;
+
+    // TODO: is this loop syntax faster?
+    for (var i = game.npcs.length; i--;) {
+      var npc = game.npcs[i];
+      if(npc.isDestroyed) {
+        anyDestroyed = true;
+        delete game.npcs[i];
+      } else {
+        // game.checkCollisions(npc);
+        npc.move();
+        npc.draw();
+      }
+    }
+
+    if(anyDestroyed) {
+      // clean null objects from npc array
+      game.npcs.clean();
+    }
+  };
+
+  return this;
 
 });

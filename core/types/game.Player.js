@@ -3,7 +3,8 @@
     // Node.js
     module.exports = factory({
       'core': require('../game.core'),
-      'Object': require('./game.Object')
+      'Object': require('./game.Object'),
+      'Ship': require('./game.Ship')
     });
   } else if (typeof define === 'function' && define.amd) {
     // AMD
@@ -27,6 +28,8 @@
     if (player) {
       this.ship.x = player.ship.x;
     }
+
+    return this;
 	};
 
 	game.Player.prototype = new game.Object();

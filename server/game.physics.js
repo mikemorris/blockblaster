@@ -109,7 +109,7 @@
     // no input to process
     if (!this.queue.length) return;
 
-    (function iterate(move) {
+    (function iterate(time, queue, processed, move) {
       process.nextTick(function() {
         var vector;
         var vx;
@@ -118,8 +118,8 @@
         // calculate delta time vector
         vector = game.core.getVelocity(move.input);
 
-        vx = parseInt(move.data.speed * this.time.delta * vector.dx);
-        vy = parseInt(move.data.speed * this.time.delta * vector.dy);
+        vx = parseInt(move.data.speed * time.delta * vector.dx);
+        vy = parseInt(move.data.speed * time.delta * vector.dy);
 
         // pipe valid commands directly to redis
         // passing a negative value to redis.incrby() decrements
@@ -132,13 +132,13 @@
         }
 
         // shift ack state to queue
-        this.processed.push(move.seq);
+        processed.push(move.seq);
 
         // if queue empty, stop looping
-        if (!this.queue.length) return;
-        iterate(this.queue.shift());
+        if (!queue.length) return;
+        iterate(time, queue, processed, queue.shift());
       });
-    })(this.queue.shift());
+    })(this.time, this.queue, this.processed, this.queue.shift());
   }
 
   return {

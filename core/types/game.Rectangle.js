@@ -1,4 +1,17 @@
-var rectangle = (function(game) {
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({
+      'Object': require('./game.Object')
+    });
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.Rectangle = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
 	game.Rectangle = function(properties) {
 		properties && this.set(properties);
@@ -12,12 +25,6 @@ var rectangle = (function(game) {
 		game.ctx.fill();
 	};
 
-  return game;
-});
+  return game.Rectangle;
 
-// export module or attach to window
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = rectangle;
-} else {
-  rectangle(window.GAME || {});
-}
+});

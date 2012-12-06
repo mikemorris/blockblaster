@@ -44,8 +44,8 @@
   var updatePlayer = function(store, uid, data, game, _, callback) {
     // defer to redis for absolute state
     store.get('player:' + uid + ':ship:x', function(err, res) {
-      var x = res;
-      var player = game.players[uid];
+      var x = parseInt(res);
+      var player = game.levels.players[uid];
 
       // publish state if changed
       if (x !== null && player && player.ship.x != x) {

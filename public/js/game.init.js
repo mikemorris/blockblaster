@@ -4,9 +4,9 @@ window.GAME = window.GAME || {};
 
 	game.init = function() {
 		// game.debug = true;
-		game.core.createCanvas(800, 450);
 		game.core.initGlobalVariables();
 		game.input.init();
+		game.client.createCanvas(800, 450);
 		game.client.init();
 		game.client.play();
 	};

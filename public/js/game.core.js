@@ -7,12 +7,11 @@
     define(factory);
   } else {
     // browser globals (root is window)
-    // window.GAME.core = factory(window.GAME || {});
-    root.GAME.returnExports = factory(root.GAME || {});
+    root.GAME.core = factory(root.GAME || {});
   }
 })(this, function(game) {
 
-	var module = {
+	return {
 
     // linear interpolation
     lerp: function(prev, next, time) {
@@ -69,7 +68,7 @@
         }
       }
 
-      return this.getVector(dx, dy);
+      return game.core.getVector(dx, dy);
     },
 
 		getRandomNumber: function(min, max) {
@@ -120,7 +119,5 @@
       */
 		}
 	};
-
-  return module;
 
 });
