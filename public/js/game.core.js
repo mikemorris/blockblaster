@@ -76,10 +76,6 @@
 		},
 
 		initGlobalVariables: function() {
-      // server time
-      // TODO: how does this relate to setDelta? client.then and client.now
-      game.time = {};
-
       // input
 			game.keysDown = [];
 

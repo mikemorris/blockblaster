@@ -1,10 +1,22 @@
-window.GAME = window.GAME || {};
-
-(function(game) {
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({
+      'core': require('../game.core'),
+      'Object': require('./game.Object')
+    });
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.Enemy = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
 	game.Enemy = function(x, y, direction) {
 		var properties = {
-			image: new game.Image('images/enemy.png'),
+      image: (game.Image ? new game.Image('images/enemy.png') : false),
 			color: 'rgba(0, 0, 255, 0.25)',
 			direction: direction || 1,
 			height: 30,
@@ -50,11 +62,13 @@ window.GAME = window.GAME || {};
 		this.image.draw();
 	};
 
-	game.Enemy.prototype.move = function() {
-		this.x += this.vx * this.direction * game.client.delta;
+	game.Enemy.prototype.move = function(callback) {
+
+		this.x += this.vx * this.direction * game.time.delta;
+
 		if(this.isHit) {
-			this.y += this.vy * game.client.delta;
-			this.rotation += 20 * game.client.delta;
+			this.y += this.vy * game.time.delta;
+			this.rotation += 20 * game.time.delta;
 			this.isDestroyed = this.y < -this.height;
 		} else {
 			if(this.x > this.origin.x + this.range) {
@@ -63,6 +77,9 @@ window.GAME = window.GAME || {};
 				this.direction = 1;
 			}
 		}
+
+    if (typeof callback === 'function') callback();
+
 	};
 
   game.Enemy.prototype.interpolate = function() {
@@ -114,7 +131,9 @@ window.GAME = window.GAME || {};
     x = game.core.lerp(current.x, target.x, time_point);
 
     // apply smoothing
-    this.x = game.core.lerp(this.x, x, game.client.delta * game.smoothing);
+    this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
   };
 
-})(window.GAME);
+  return game.Enemy;
+
+});

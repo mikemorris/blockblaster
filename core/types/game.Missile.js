@@ -45,7 +45,7 @@
 	};
 
 	game.Missile.prototype.move = function(direction) {
-		this.y -= this.vy * game.client.delta;
+		this.y -= this.vy * game.time.delta;
 		if(this.y < (0 - this.height)){
 			this.reload();
 		}

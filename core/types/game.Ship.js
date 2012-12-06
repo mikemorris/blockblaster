@@ -3,6 +3,7 @@
     // Node.js
     module.exports = factory({
       'core': require('../game.core'),
+      'time': require('../game.time'),
       'Object': require('./game.Object'),
       'Missile': require('./game.Missile')
     });
@@ -58,7 +59,7 @@
     var vector = game.core.getVelocity(pressed);
     var input;
 
-    this.vx = parseInt(this.speed * game.client.delta * vector.dx);
+    this.vx = parseInt(this.speed * game.time.delta * vector.dx);
 
 		if(pressed.spacebar) {
 			this.fire();
@@ -113,7 +114,7 @@
 
     // update client position with reconciled prediction
     // server position plus delta of unprocessed input
-    vx = this.speed * game.client.delta * dx;
+    vx = this.speed * game.time.delta * dx;
     this.x = this.sx + vx;
   };
 
@@ -126,7 +127,7 @@
 	};
 
 	game.Ship.prototype.fire = function() {
-		this.now = game.client.now;
+		this.now = game.time.now;
 		var fireDelta = (this.now - this.then)/1000;
 		var missilesLoaded = this.missiles.length > 0;
 		var gunIsCool = fireDelta > 1 / this.repeatRate;

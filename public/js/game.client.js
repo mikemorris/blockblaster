@@ -174,7 +174,7 @@
 
   this.loop = function() {
     this.animationFrame = window.requestAnimationFrame(this.loop);
-    this.setDelta();
+    game.time.setDelta();
 
     // defined in scene
     this.runFrameActions();
@@ -202,12 +202,6 @@
     }
   };
 
-  this.setDelta = function() {
-    this.now = Date.now();
-    this.delta = (this.now - this.then) / 1000; // seconds since last frame
-    this.then = this.now;
-  };
-
   this.clearCanvas = function() {
     game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
   };
@@ -220,27 +214,27 @@
     document.getElementById('canvas-wrapper').appendChild(game.canvas);
   };
 
-  this.updateMissles = function() {
-    for (var i = game.missiles.length; i--;) {
-      var missile = game.missiles[i];
-      if(missile.isLive) {
-        missile.move();
-        missile.draw();
-      }
-    }
-  };
-
   this.updatePlayers = function() {
     var players = Object.keys(game.players);
     var length = players.length;
     var uid;
     var player;
 
+    this.updateMissiles = function(missiles) {
+      for (var i = missiles.length; i--;) {
+        var missile = missiles[i];
+
+        // TODO: is isLive check necessary if iterating over active array?
+        if(missile.isLive) {
+          missile.move();
+          missile.draw();
+        }
+      }
+    };
+
     for (var i = 0; i < length; i++) {
       uid = players[i];
       player = game.players[uid];
-
-      // this.updateMissles(player.ship.missiles);
 
       // client prediction only for active player
       if (uid === game.uid) {
@@ -250,6 +244,8 @@
         // interpolate position of other players
         player.ship.interpolate();
       }
+
+      this.updateMissiles(player.ship.missiles);
 
       player.ship.draw();
     }

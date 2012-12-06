@@ -9,7 +9,7 @@
     // browser globals (root is window)
     root.GAME.time = factory(root.GAME || {});
   }
-})(this, function() {
+})(this, function(game) {
 
   var then = Date.now();
 

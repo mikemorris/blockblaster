@@ -1,4 +1,20 @@
-var ship = (function(game) {
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory({
+      'core': require('../game.core'),
+      'time': require('../game.time.js'),
+      'Object': require('./game.Object'),
+      'Missile': require('./game.Missile')
+    });
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.Ship = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
 	game.Ship = function(properties) {
 		this.set(properties);
@@ -14,7 +30,7 @@ var ship = (function(game) {
 
 	game.Ship.prototype.setDefaults = function() {
 		this.fireButtonReleased = true;
-		this.image = new game.Image('images/ship.png'),
+		this.image = game.Image ? new game.Image('images/ship.png') : false,
 		this.missiles = [],
 		this.now = 0;
 		this.then = 0;
@@ -37,7 +53,7 @@ var ship = (function(game) {
     var vector = game.core.getVelocity(pressed);
     var input;
 
-    this.vx = parseInt(this.speed * game.client.delta * vector.dx);
+    this.vx = parseInt(this.speed * game.time.delta * vector.dx);
 
 		if(pressed.spacebar) {
 			this.fire();
@@ -93,7 +109,7 @@ var ship = (function(game) {
 
     // update client position with reconciled prediction
     // server position plus delta of unprocessed input
-    vx = this.speed * game.client.delta * dx;
+    vx = this.speed * game.time.delta * dx;
     this.x = this.sx + vx;
   };
 
@@ -133,20 +149,20 @@ var ship = (function(game) {
     }
 
     // calculate client time percentage between current and target points
-    var time_point = 0;
+    var timePoint = 0;
 
     if (target.time !== current.time) {
       var difference = target.time - game.time.client;
       var spread = target.time - current.time;
-      time_point = difference / spread;
+      timePoint = difference / spread;
     }
 
     // interpolated position
     // TODO: jump to position if large delta
-    x = game.core.lerp(current.ship.x, target.ship.x, time_point);
+    x = game.core.lerp(current.ship.x, target.ship.x, timePoint);
 
     // apply smoothing
-    this.x = game.core.lerp(this.x, x, game.client.delta * game.smoothing);
+    this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
   };
 
 	game.Ship.prototype.loadMissiles = function() {
@@ -158,15 +174,21 @@ var ship = (function(game) {
 	};
 
 	game.Ship.prototype.fire = function() {
-		this.now = game.client.now;
+		this.now = game.time.now;
 		var fireDelta = (this.now - this.then)/1000;
-		var missilesLoaded = this.missiles.length > 0;
+
+    // filter by isLive
+    var missiles = _.filter(this.missiles, function(missile) {
+      return !missile.isLive;
+    });
+
+		var missilesLoaded = missiles.length > 0;
 		var gunIsCool = fireDelta > 1 / this.repeatRate;
 		var readyToFire = gunIsCool && missilesLoaded && this.fireButtonReleased;
 
 		if(readyToFire) {
 			this.fireButtonReleased = false;
-			this.missiles[0].fire();
+			missiles[0].fire();
 			this.then = this.now;
 		}
 	};
@@ -185,12 +207,6 @@ var ship = (function(game) {
 		console.log('die!');
 	};
 
-  return game;
-});
+  return game.Ship;
 
-// export module or attach to window
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ship;
-} else {
-  ship(window.GAME || {});
-}
+});

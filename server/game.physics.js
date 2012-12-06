@@ -57,7 +57,7 @@
 
       // set position authoritatively for all players
       player.ship.respondToInput();
-      player.ship.move(game.time);
+      player.ship.move();
 
       this.updateMissiles(player.ship.missiles);
       // this.checkCollisions(missile, npcs);
@@ -78,7 +78,7 @@
         // TODO: flag enemy as destroyed in redis
         // store.set('npc:' + i + ':x', npc.x, function(err, res) {});
       } else {
-        npc.move(game.time, (function(i) {
+        npc.move((function(i) {
           store.set('npc:' + i + ':x', npc.x, function(err, res) {});
         })(i));
       }
