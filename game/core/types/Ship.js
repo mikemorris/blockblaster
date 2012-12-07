@@ -125,6 +125,9 @@
     // return if no server updates to process
     if (!this.queue.server.length || difference < 0.1) return;
 
+    // snap if large difference
+    if (difference > 100) this.state.x = this.sx;
+
     var x;
     var vx;
 
