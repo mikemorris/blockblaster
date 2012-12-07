@@ -29,8 +29,6 @@
       var length = players.length;
       var uid;
 
-      // console.log(players);
-
       async.forEach(
         players,
         function(uid, callback) {
@@ -50,12 +48,19 @@
       var player = game.levels.players[uid];
 
       // publish state if changed
+      // TODO: delta?
       if (x !== null && player && player.ship.x != x) {
         player.ship.state.x = x;
 
         data.players[uid] = {};
         data.players[uid].ship = {};
         data.players[uid].ship.x = player.ship.state.x;
+        data.players[uid].ship.missiles = [];
+
+        for (var i = 0; i < player.ship.missiles.length; i++) {
+          var missile = player.ship.missiles[i].state;
+          data.players[uid].ship.missiles.push(missile);
+        }
       }
 
       // notify async that iterator has completed
@@ -106,6 +111,20 @@
     data.time = game.time.now;
 
     console.log(data);
+
+    /*
+    var keys = Object.keys(data.players);
+    var key;
+
+    var missiles;
+    var missile;
+    
+    for (var i = 0; i < keys.length; i++) {
+      key = keys[i];
+      missiles = data.players[key].ship.missiles;
+      console.log(missiles);
+    }
+    */
 
     // return delta object to client
     socket.io.sockets.emit('state:update', data);

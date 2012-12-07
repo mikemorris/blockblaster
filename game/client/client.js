@@ -100,32 +100,44 @@
             // authoritatively set internal state if player exists on client
             client = game.players[uid];
 
-            if (client && client.ship) {
-              // update last acknowledged input
-              if (data.ack) {
-                client.ship.ack = data.ack;
-              }
+            // update last acknowledged input
+            if (data.ack) {
+              client.ship.ack = data.ack;
+            }
 
-              client.ship.sx = parseInt(player.ship.x);
-              client.ship.sy = parseInt(player.ship.y);
+            client.ship.sx = parseInt(player.ship.x);
+            client.ship.sy = parseInt(player.ship.y);
 
-              // reconcile client prediction with server
-              if (uid === game.uid) {
-                client.ship.reconcile();
-              } else {
-                // queue server updates for entity interpolation
-                client.ship.queue.server.push(player);
-                
-                // splice array, keeping BUFFER_SIZE most recent items
-                if (client.ship.queue.server.length >= game.buffersize) {
-                  client.ship.queue.server.splice(-game.buffersize);
-                }
+            // reconcile client prediction with server
+            if (uid === game.uid) {
+              client.ship.reconcile();
+            } else {
+              // queue server updates for entity interpolation
+              client.ship.queue.server.push(player);
+              
+              // splice array, keeping BUFFER_SIZE most recent items
+              if (client.ship.queue.server.length >= game.buffersize) {
+                client.ship.queue.server.splice(-game.buffersize);
               }
+            }
+
+            // update missiles
+            var missiles = player.ship.missiles;
+            var missile;
+
+            for (var j = 0; j < missiles.length; j++) {
+              missile = missiles[j];
+
+              client.ship.missiles[j].sy = parseInt(missile.y);
+              client.ship.missiles[j].state.x = parseInt(missile.x);
+              client.ship.missiles[j].state.isLive = missile.isLive;
+
+              client.ship.missiles[j].queue.server.push(missile);
             }
           }
         }
 
-        // update players
+        // update npcs
         var npcs = Object.keys(data.npcs);
         var length_npc = npcs.length;
 
@@ -221,13 +233,12 @@
     var uid;
     var player;
 
-    this.updateMissiles = function(missiles) {
+    var updateMissiles = function(missiles) {
       for (var i = missiles.length; i--;) {
         var missile = missiles[i];
 
-        // TODO: is isLive check necessary if iterating over active array?
         if(missile.state.isLive) {
-          missile.move();
+          missile.interpolate();
           missile.draw();
         }
       }
@@ -246,7 +257,7 @@
         player.ship.interpolate();
       }
 
-      this.updateMissiles(player.ship.missiles);
+      updateMissiles(player.ship.missiles);
 
       player.ship.draw();
     }

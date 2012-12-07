@@ -28,8 +28,9 @@
     this.width = 10;
     this.height = 20;
 
-    // circular dependency
-    this.ship = ship;
+    // interpolation queue
+    this.queue = {};
+    this.queue.server = [];
 	};
 
 	Missile.prototype = new game.Rectangle();
@@ -39,9 +40,9 @@
 		this.reload();
 	};
 
-	Missile.prototype.fire = function() {
-		this.state.x = this.ship.state.x + this.ship.width / 2 - this.width / 2;
-		this.state.y = this.ship.state.y;
+	Missile.prototype.fire = function(ship) {
+		this.state.x = ship.state.x + ship.width / 2 - this.width / 2;
+		this.state.y = ship.state.y;
 		this.state.vy = this.state.speed;
 
     // switch missile to active state
@@ -50,6 +51,8 @@
 
 	Missile.prototype.move = function(direction) {
 		this.state.y -= this.state.vy * game.time.delta;
+
+    // reload if offscreen
 		if(this.state.y < (0 - this.height)) {
 			this.reload();
 		}
@@ -57,11 +60,71 @@
 
 	Missile.prototype.reload = function() {
 		this.state.x = -this.height;
-		this.state.y = this.ship.state.y;
+		this.state.y = 0;
 
     // reload missile
 		this.state.isLive = false;
 	};
+
+  Missile.prototype.interpolate = function() {
+    // entity interpolation
+    var difference = Math.abs(this.sy - this.state.y);
+
+    // return if no server updates to process
+    if (!this.queue.server.length || difference < 0.1) return;
+
+    // snap if large difference
+    if (difference > 100) this.state.y = this.sy;
+
+    var y;
+    var vy;
+
+    var target
+    var current;
+
+    var count = game.queue.server.length - 1;
+
+    var prev;
+    var next;
+
+    for(var i = 0; i < count; i++) {
+      prev = this.queue.server[i];
+      next = this.queue.server[i + 1];
+
+      // if client offset time is between points, set target and break
+      if(game.time.client > prev.time && game.time.client < next.time) {
+        target = prev;
+        current = next;
+        break;
+      }
+    }
+
+    // no interpolation target found, snap to most recent state
+    if(!target) {
+      target = current = this.queue.server[this.queue.server.length - 1];
+    }
+
+    // calculate client time percentage between current and target points
+    var timePoint = 0;
+
+    if (target.time !== current.time) {
+      var difference = target.time - game.time.client;
+      var spread = target.time - current.time;
+      timePoint = difference / spread;
+    }
+
+    // interpolated position
+    // TODO: jump to position if large delta
+    y = game.core.lerp(current.y, target.y, timePoint);
+
+    // apply smoothing
+    this.state.y = game.core.lerp(this.state.y, y, game.time.delta * game.smoothing);
+
+    // reload if offscreen
+		if(this.state.y < (0 - this.height)) {
+			this.reload();
+		}
+  };
 
   return Missile;
 

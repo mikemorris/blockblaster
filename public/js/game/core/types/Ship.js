@@ -57,6 +57,7 @@
 	Ship.prototype.respondToInput = function() {
 		var pressed = game.input.pressed;
     var vector = game.core.getVelocity(pressed);
+    var fireButtonChanged = false;
     var input;
 
     this.state.vx = parseInt(this.state.speed * game.time.delta * vector.dx);
@@ -64,10 +65,14 @@
 		if(pressed.spacebar) {
 			this.fire();
 		} else {
+      if (!this.fireButtonReleased) {
+        fireButtonChanged = true;
+      }
+
 			this.fireButtonReleased = true;
 		}
 
-    if (this.state.vx) {
+    if (this.state.vx || pressed.spacebar || fireButtonChanged) {
       // create input object
       input = {
         time: Date.now(),
@@ -126,7 +131,6 @@
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    console.log(difference);
     if (difference > 100) this.state.x = this.sx;
 
     var x;
@@ -187,9 +191,15 @@
 		var fireDelta = (this.now - this.then)/1000;
 
     // filter by isLive
-    var missiles = _.filter(this.missiles, function(missile) {
-      return !missile.state.isLive;
-    });
+    var missiles = [];
+    var missile;
+
+    for (var i = 0; i < this.missiles.length; i++) {
+      missile = this.missiles[i];
+      if (!missile.state.isLive) {
+        missiles.push(missile);
+      }
+    }
 
 		var missilesLoaded = missiles.length > 0;
 		var gunIsCool = fireDelta > 1 / this.state.repeatRate;
@@ -197,7 +207,7 @@
 
 		if(readyToFire) {
 			this.fireButtonReleased = false;
-			missiles[0].fire();
+			missiles[0].fire(this);
 			this.then = this.now;
 		}
 	};

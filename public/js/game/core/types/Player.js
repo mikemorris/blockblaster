@@ -29,6 +29,10 @@
       this.ship.state = player.ship;
     }
 
+    // input queue
+    this.queue = []
+    this.processed = [];
+
     return this;
 	};
 

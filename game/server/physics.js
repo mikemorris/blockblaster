@@ -36,31 +36,12 @@
     }
   };
 
-  this.updateMissiles = function(missiles) {
+  var updateMissiles = function(missiles) {
     for (var i = missiles.length; i--;) {
       var missile = missiles[i];
-      if(missile.isLive) {
+      if(missile.state.isLive) {
         missile.move();
       }
-    }
-  };
-
-  var updatePlayers = function() {
-    var players = Object.keys(scene.players);
-    var length = players.length;
-    var uid;
-    var player;
-
-    for (var i = 0; i < length; i++) {
-      uid = players[i];
-      player = scene.players[uid];
-
-      // set position authoritatively for all players
-      player.ship.respondToInput();
-      player.ship.move();
-
-      this.updateMissiles(player.ship.missiles);
-      // this.checkCollisions(missile, npcs);
     }
   };
 
@@ -105,46 +86,68 @@
     this.updateNPCs(store);
 
     // TODO: process input inside player loop
-    // no input to process
-    if (!this.queue.length) return;
+    var players = Object.keys(game.levels.players);
+    var length = players.length;
+    var uid;
+    var player;
 
-    (function iterate(queue, processed, move) {
-      process.nextTick(function() {
-        var vector;
-        var vx;
-        var vy;
+    // set position authoritatively for all players
+    for (var i = 0; i < length; i++) {
+      uid = players[i];
+      player = game.levels.players[uid];
 
-        // calculate delta time vector
-        vector = game.core.getVelocity(move.input);
+      this.updateMissiles(player.ship.missiles);
+      // this.checkCollisions(missile, npcs);
 
-        vx = parseInt(move.data.speed * game.time.delta * vector.dx);
-        vy = parseInt(move.data.speed * game.time.delta * vector.dy);
+      // no input to process
+      if (!player.queue.length) continue;
 
-        // pipe valid commands directly to redis
-        // passing a negative value to redis.incrby() decrements
-        if (vx !== 0) {
-          store.incrby('player:' + move.uid + ':ship:x', vx, function(err, res) {});
-        }
+      (function iterate(player, uid, move) {
+        process.nextTick(function() {
+          var vector;
+          var vx;
+          var vy;
 
-        if (vy !== 0) {
-          store.incrby('player:' + move.uid + ':ship:y', vy, function(err, res) {});
-        }
+          // calculate delta time vector
+          vector = game.core.getVelocity(move.input);
 
-        // shift ack state to queue
-        processed.push(move.seq);
+          vx = parseInt(move.data.speed * game.time.delta * vector.dx);
+          vy = parseInt(move.data.speed * game.time.delta * vector.dy);
 
-        // if queue empty, stop looping
-        if (!queue.length) return;
-        iterate(queue, processed, queue.shift());
-      });
-    })(this.queue, this.processed, this.queue.shift());
+          // pipe valid commands directly to redis
+          // passing a negative value to redis.incrby() decrements
+          if (vx !== 0) {
+            store.incrby('player:' + uid + ':ship:x', vx, function(err, res) {});
+          }
+
+          if (vy !== 0) {d
+            store.incrby('player:' + uid + ':ship:y', vy, function(err, res) {});
+          }
+
+          if(move.input.spacebar) {
+            player.ship.fire();
+          } else {
+            // TODO: no command with this state is being sent if ship is stationary
+            player.ship.fireButtonReleased = true;
+          }
+
+          // shift ack state to queue
+          player.processed.push(move.seq);
+
+          // if queue empty, stop looping
+          if (!player.queue.length) return;
+          iterate(player, uid, player.queue.shift());
+        });
+      })(player, uid, player.queue.shift());
+    }
+
   }
 
   return {
     queue: queue,
     processed: processed,
     init: init,
-    updatePlayers: updatePlayers,
+    updateMissiles: updateMissiles,
     updateNPCs: updateNPCs,
     loop: loop
   };

@@ -79,8 +79,7 @@
 
       socket.on('command:send', function (command) {
         // add to server physics queue instead of immeadiately publishing
-        command.uid = socket.uid;
-        game.physics.queue.push(command);
+        game.levels.players[socket.uid].queue.push(command);
       })
       .on('disconnect', function() {
         var uid = socket.uid;
