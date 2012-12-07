@@ -18,25 +18,29 @@
 
 	var Enemy = function(x, y, direction) {
 		var properties = {
-      image: (game.Image ? new game.Image('images/enemy.png') : false),
 			color: 'rgba(0, 0, 255, 0.25)',
 			direction: direction || 1,
-			height: 30,
 			maxMissiles: 5,
-			missiles: [],
-			range: 50,
 			speed: 100,
 			vx: 100,
-			width: 50,
 			x: x + game.core.getRandomNumber(-25, 25),
-			y: y,
-			origin: {
-				x: x,
-				y: y
-			}
+			y: y
 		};
 
 		this.set(properties);
+
+    this.width = 50;
+    this.height = 30;
+
+    this.image = game.Image ? new game.Image('images/enemy.png') : false;
+    this.missiles = [];
+
+    this.range = 50;
+
+    this.origin = {
+      x: x,
+      y: y
+    };
 
     // interpolation queue
     this.queue = {};
@@ -46,18 +50,18 @@
 	Enemy.prototype = new game.Entity();
 
 	Enemy.prototype.destroy = function() {
-		this.isHit = true;
-		this.vy = -200;
+		this.state.isHit = true;
+		this.state.vy = -200;
 		// this.isDestroyed = true;
 	};
 
 	Enemy.prototype.drawType = function() {
 		if(game.debug) {
-			if(this.isDestroyed) {
-				this.color = 'red';
+			if(this.state.isDestroyed) {
+				this.state.color = 'red';
 			}
 			// Show hit-area
-			game.ctx.fillStyle = this.color;
+			game.ctx.fillStyle = this.state.color;
 			game.ctx.fillRect(0,0,this.width, this.height);
 			game.ctx.fill();
 		}
@@ -66,18 +70,18 @@
 
 	Enemy.prototype.move = function(callback) {
 
-		this.x += this.vx * this.direction * game.time.delta;
+		this.state.x += this.state.vx * this.state.direction * game.time.delta;
 
     // missile impact
-		if(this.isHit) {
-			this.y += this.vy * game.time.delta;
-			this.rotation += 20 * game.time.delta;
-			this.isDestroyed = this.y < -this.height;
+		if(this.state.isHit) {
+			this.state.y += this.state.vy * game.time.delta;
+			this.state.rotation += 20 * game.time.delta;
+			this.state.isDestroyed = this.state.y < -this.height;
 		} else {
-			if(this.x > this.origin.x + this.range) {
-				this.direction = -1;
-			} else if (this.x < this.origin.x - this.range) {
-				this.direction = 1;
+			if(this.state.x > this.origin.x + this.range) {
+				this.state.direction = -1;
+			} else if (this.state.x < this.origin.x - this.range) {
+				this.state.direction = 1;
 			}
 		}
 
@@ -87,7 +91,7 @@
 
   Enemy.prototype.interpolate = function() {
     // entity interpolation
-    var difference = Math.abs(this.sx - this.x);
+    var difference = Math.abs(this.sx - this.state.x);
 
     // return if no server updates to process
     if (!this.queue.server.length || difference < 0.1) return;
@@ -121,20 +125,20 @@
     }
 
     // calculate client time percentage between current and target points
-    var time_point = 0;
+    var timePoint = 0;
 
     if (target.time !== current.time) {
       var difference = target.time - game.time.client;
       var spread = target.time - current.time;
-      time_point = difference / spread;
+      timePoint = difference / spread;
     }
 
     // interpolated position
     // TODO: jump to position if large delta
-    x = game.core.lerp(current.x, target.x, time_point);
+    x = game.core.lerp(current.x, target.x, timePoint);
 
     // apply smoothing
-    this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+    this.state.x = game.core.lerp(this.state.x, x, game.time.delta * game.smoothing);
   };
 
   return Enemy;

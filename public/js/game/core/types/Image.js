@@ -3,9 +3,14 @@ window.GAME = window.GAME || {};
 (function(game) {
 
 	game.Image = function(src) {
+		var properties = {
+      x: 0,
+      y: 0
+    };
+
+		this.set(properties);
+
 		this.load(src);
-		this.x = 0,
-		this.y = 0;
 	};
 
 	game.Image.prototype = new game.Entity();

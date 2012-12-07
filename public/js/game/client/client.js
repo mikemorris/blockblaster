@@ -58,7 +58,7 @@
       for (var i = 0; i < length; i++) {
         index = npcs[i];
         npc = data[index];
-        game.npcs[index] = new game.Enemy(npc.x, npc.y, npc.direction);
+        game.npcs[index] = new game.Enemy(npc.state.x, npc.state.y, npc.direction);
       }
 
       /*
@@ -226,7 +226,7 @@
         var missile = missiles[i];
 
         // TODO: is isLive check necessary if iterating over active array?
-        if(missile.isLive) {
+        if(missile.state.isLive) {
           missile.move();
           missile.draw();
         }

@@ -104,13 +104,27 @@
   var add = function(io, socket, rc, uid, game) {
     var data = {};
     data.uid = uid;
-    data.player = game.levels.players[uid];
+
+    var player = game.levels.players[uid];
+    data.player = player.state || {};
+    data.player.ship = player.ship.state;
 
     // only send new player to existing connections
     io.sockets.emit('players:add', data);
 
+    // TODO: fix uid reuse
+    var keys = Object.keys(game.levels.players);
+    var players = {};
+    var player = {};
+
+    for (var i = 0; i < keys.length; i++) {
+      uid = keys[i];
+      player.ship = game.levels.players[uid].ship.state;
+      players[uid] = player;
+    }
+
     // send full player list to new connection
-    io.sockets.socket(socket.id).emit('players', game.levels.players);
+    io.sockets.socket(socket.id).emit('players', players);
     io.sockets.socket(socket.id).emit('npcs', game.levels.npcs);
   };
 
@@ -136,10 +150,10 @@
 
         // init state if not in redis already
         if (res !== null) {
-          player.ship.x = res;
+          player.ship.state.x = res;
           add(io, socket, rc, uid, game);
         } else {
-          rc.set(attr, player.ship.x, function(err, res) {
+          rc.set(attr, player.ship.state.x, function(err, res) {
             add(io, socket, rc, uid, game);
           });
         }

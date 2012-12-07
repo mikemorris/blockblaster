@@ -17,8 +17,6 @@
 
 	var Missile = function(ship) {
 		var properties = {
-			width: 10,
-			height: 20,
 			speed: 300,
 			vy: 0,
 			y: 0,
@@ -27,39 +25,42 @@
 
 		this.set(properties);
 
+    this.width = 10;
+    this.height = 20;
+
     // circular dependency
-    // this.ship = ship;
+    this.ship = ship;
 	};
 
 	Missile.prototype = new game.Rectangle();
 
 	Missile.prototype.explode = function() {
-		this.vy = 0;
+		this.state.vy = 0;
 		this.reload();
 	};
 
 	Missile.prototype.fire = function() {
-		this.x = this.ship.x + this.ship.width / 2 - this.width / 2;
-		this.y = this.ship.y;
-		this.vy = this.speed;
+		this.state.x = this.ship.state.x + this.ship.width / 2 - this.width / 2;
+		this.state.y = this.ship.state.y;
+		this.state.vy = this.state.speed;
 
     // switch missile to active state
-		this.isLive = true;
+		this.state.isLive = true;
 	};
 
 	Missile.prototype.move = function(direction) {
-		this.y -= this.vy * game.time.delta;
-		if(this.y < (0 - this.height)) {
+		this.state.y -= this.state.vy * game.time.delta;
+		if(this.state.y < (0 - this.height)) {
 			this.reload();
 		}
 	};
 
 	Missile.prototype.reload = function() {
-		this.x = -this.height;
-		this.y = this.ship.y;
+		this.state.x = -this.height;
+		this.state.y = this.ship.state.y;
 
     // reload missile
-		this.isLive = false;
+		this.state.isLive = false;
 	};
 
   return Missile;

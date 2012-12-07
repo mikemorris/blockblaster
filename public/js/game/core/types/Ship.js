@@ -35,20 +35,23 @@
 		this.missiles = [];
 		this.now = 0;
 		this.then = 0;
-		this.rotation = 0; // radians
-		this.scale = 1;
-		this.vx = 0;
 		this.height = 50;
 		this.width = 50;
 
-    // TODO: this should not depend on client side code
-    this.x = game.canvas ? game.canvas.width / 2 - this.width / 2 : 0;
-    this.y = game.canvas ? game.canvas.height - this.height - 25 : 0;
+		var properties = {
+      vx: 0,
 
-		// user defineable settings
-		this.speed = this.speed || 300;
-		this.maxMissiles = this.maxMissiles || 3;
-		this.repeatRate = this.repeatRate || 30;
+      // TODO: this should not depend on client side code
+      x: game.canvas ? game.canvas.width / 2 - this.width / 2 : (800 / 2) - this.width,
+      y: game.canvas ? game.canvas.height - this.height - 25 : 450 - this.height,
+
+      // user defineable settings
+      speed: this.state.speed || 300,
+      maxMissiles: this.state.maxMissiles || 3,
+      repeatRate: this.state.repeatRate || 30
+    };
+
+    this.set(properties);
 	};
 
 	Ship.prototype.respondToInput = function() {
@@ -56,7 +59,7 @@
     var vector = game.core.getVelocity(pressed);
     var input;
 
-    this.vx = parseInt(this.speed * game.time.delta * vector.dx);
+    this.state.vx = parseInt(this.state.speed * game.time.delta * vector.dx);
 
 		if(pressed.spacebar) {
 			this.fire();
@@ -64,7 +67,7 @@
 			this.fireButtonReleased = true;
 		}
 
-    if (this.vx) {
+    if (this.state.vx) {
       // create input object
       input = {
         time: Date.now(),
@@ -72,7 +75,7 @@
         input: pressed,
         data: {
           vector: vector,
-          speed: this.speed
+          speed: this.state.speed
         }
       };
 
@@ -83,7 +86,7 @@
 	};
 
 	Ship.prototype.move = function() {
-		this.x += this.vx;
+		this.state.x += this.state.vx;
 	};
 
   Ship.prototype.reconcile = function() {
@@ -111,13 +114,13 @@
 
     // update client position with reconciled prediction
     // server position plus delta of unprocessed input
-    vx = this.speed * game.time.delta * dx;
-    this.x = this.sx + vx;
+    vx = this.state.speed * game.time.delta * dx;
+    this.state.x = this.sx + vx;
   };
 
   Ship.prototype.interpolate = function() {
     // entity interpolation
-    var difference = Math.abs(this.sx - this.x);
+    var difference = Math.abs(this.sx - this.state.x);
 
     // return if no server updates to process
     if (!this.queue.server.length || difference < 0.1) return;
@@ -164,12 +167,12 @@
     x = game.core.lerp(current.ship.x, target.ship.x, timePoint);
 
     // apply smoothing
-    this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+    this.state.x = game.core.lerp(this.state.x, x, game.time.delta * game.smoothing);
   };
 
 	Ship.prototype.loadMissiles = function() {
 		var i = 0;
-		while(i < this.maxMissiles) {
+		while(i < this.state.maxMissiles) {
 			this.missiles.push(new game.Missile(this));
 			i++;
 		}
@@ -181,11 +184,11 @@
 
     // filter by isLive
     var missiles = _.filter(this.missiles, function(missile) {
-      return !missile.isLive;
+      return !missile.state.isLive;
     });
 
 		var missilesLoaded = missiles.length > 0;
-		var gunIsCool = fireDelta > 1 / this.repeatRate;
+		var gunIsCool = fireDelta > 1 / this.state.repeatRate;
 		var readyToFire = gunIsCool && missilesLoaded && this.fireButtonReleased;
 
 		if(readyToFire) {

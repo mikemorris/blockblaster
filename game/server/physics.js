@@ -79,7 +79,7 @@
         // store.set('npc:' + i + ':x', npc.x, function(err, res) {});
       } else {
         npc.move((function(i) {
-          store.set('npc:' + i + ':x', npc.x, function(err, res) {});
+          store.set('npc:' + i + ':x', npc.state.x, function(err, res) {});
         })(i));
       }
     }
