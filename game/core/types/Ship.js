@@ -43,7 +43,7 @@
 
       // TODO: this should not depend on client side code
       x: game.canvas ? game.canvas.width / 2 - this.width / 2 : (800 / 2) - this.width,
-      y: game.canvas ? game.canvas.height - this.height - 25 : 450 - this.height,
+      y: game.canvas ? game.canvas.height - this.height - 25 : 450 - this.height - 25,
 
       // user defineable settings
       speed: this.state.speed || 300,

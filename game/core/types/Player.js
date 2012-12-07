@@ -26,10 +26,7 @@
 
     // init from existing state
     if (player) {
-      this.ship.state.x = player.ship.x;
-      this.speed = player.ship.speed;
-      this.maxMissiles = player.ship.maxMissiles;
-      this.repeatRate = player.ship.repeatRate;
+      this.ship.state = player.ship;
     }
 
     return this;

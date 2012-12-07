@@ -51,11 +51,11 @@
 
       // publish state if changed
       if (x !== null && player && player.ship.x != x) {
-        player.ship.x = x;
+        player.ship.state.x = x;
 
         data.players[uid] = {};
         data.players[uid].ship = {};
-        data.players[uid].ship.x = player.ship.x;
+        data.players[uid].ship.x = player.ship.state.x;
       }
 
       // notify async that iterator has completed
