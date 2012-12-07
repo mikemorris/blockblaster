@@ -46,6 +46,7 @@
 
       socket.on('players:remove', function(uid) {
         delete game.players[uid];
+        game.npcs.clean();
       });
     });
 
@@ -66,11 +67,11 @@
       socket.on('npcs:add', function(data) {
         game.npcs[data.index] = new game.Enemy(data.enemy);
       });
+      */
 
-      socket.on('npcs:remove', function(index) {
+      socket.on('npcs:destroy', function(index) {
         delete game.npcs[index];
       });
-      */
     });
 
     // set socket.uid before processing updates
@@ -161,8 +162,11 @@
                 client_npc.ack = data.ack;
               }
 
-              client_npc.sx = parseInt(npc.x);
+              // client_npc.sx = parseInt(npc.x);
               client_npc.sy = parseInt(npc.y);
+
+              client_npc.state.x = parseInt(npc.x);
+              client_npc.state.rotation = parseInt(npc.rotation);
 
               // queue server updates for entity interpolation
               client_npc.queue.server.push(npc);
@@ -263,26 +267,13 @@
     }
   };
 
-  // TODO: move destroyed logic to server
   this.updateNPCs = function() {
-    var anyDestroyed = false;
 
     // TODO: is this loop syntax faster?
     for (var i = game.npcs.length; i--;) {
       var npc = game.npcs[i];
-      if(npc.isDestroyed) {
-        anyDestroyed = true;
-        delete game.npcs[i];
-      } else {
-        // game.checkCollisions(npc);
-        npc.interpolate();
-        npc.draw();
-      }
-    }
-
-    if(anyDestroyed) {
-      // clean null objects from npc array
-      game.npcs.clean();
+      npc.interpolate();
+      npc.draw();
     }
   };
 

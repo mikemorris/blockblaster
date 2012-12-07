@@ -68,7 +68,7 @@
     });
   };
 
-  var updateNPCs = function(store, data, callback) {
+  var updateNPCs = function(socket, store, data, callback) {
     store.lrange('npcs', 0, -1, function(err, res) {
       var npcs = res;
       var length = npcs.length;
@@ -77,7 +77,7 @@
       async.forEach(
         npcs,
         function(index, callback) {
-          updateNPC(store, index, data, callback);
+          updateNPC(socket, store, index, data, callback);
         }, function() {
           // notify async that iterator has completed
           if (typeof callback === 'function') callback();
@@ -86,19 +86,21 @@
     });
   };
 
-  var updateNPC = function(store, index, data, callback) {
+  var updateNPC = function(socket, store, index, data, callback) {
     // defer to redis for absolute state
     store.get('npc:' + index + ':x', function(err, res) {
       var x = parseInt(res);
       var npc = game.levels.npcs[index];
 
       // publish state if changed
-      if (x !== null && npc && npc.x != x) {
-        npc.x = x;
+      if (x && npc && npc.state && npc.state.x != x) {
+        npc.state.x = x;
 
-        data.npcs.push({
-          x: npc.x
-        });
+        if (npc.state.isDestroyed) {
+          socket.io.sockets.emit('npc:destroy', index);
+        }
+        
+        data.npcs.push(npc.state);
       }
 
       // notify async that iterator has completed
@@ -147,7 +149,7 @@
 
     async.parallel([
       function(callback) { updatePlayers(store, data, callback) },
-      function(callback) { updateNPCs(store, data, callback) }
+      function(callback) { updateNPCs(socket, store, data, callback) }
     ], function() {
       update(socket, data);
     });

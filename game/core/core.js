@@ -11,6 +11,19 @@
   }
 })(this, function(game) {
 
+  // Array cleaner removes specfied value from array. In this case,
+  // I'm using it to remove 'undefined' objects in the array.
+  // http://stackoverflow.com/questions/281264/remove-empty-elements-from-an-array-in-javascript
+  Array.prototype.clean = function(deleteValue) {
+    for (var i = 0; i < this.length; i++) {
+      if (this[i] == deleteValue) {
+        this.splice(i, 1);
+        i--;
+      }
+    }
+    return this;
+  };
+
   // linear interpolation
   var lerp = function(prev, next, time) {
     var _prev = Number(prev);
@@ -101,10 +114,10 @@
   };
 
   var isCollision = function(a, b) {
-    return  a.x <= (b.x + b.width) &&
-        b.x <= (a.x + a.width) &&
-        a.y <= (b.y + b.height) &&
-        b.y <= (a.y + a.height);
+    return  a.state.x <= (b.state.x + b.width) &&
+        b.state.x <= (a.state.x + a.width) &&
+        a.state.y <= (b.state.y + b.height) &&
+        b.state.y <= (a.state.y + a.height);
   };
 
   var loadScene = function(name) {

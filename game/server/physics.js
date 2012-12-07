@@ -24,23 +24,23 @@
     return this;
   };
 
-  var checkCollisions = function(npc) {
-    for (var i = scene.missiles.length; i--;) {
-      var missile = scene.missiles[i];
-
-      if(game.core.isCollision(npc, missile)) {
-        missile.explode();
-        npc.destroy();
-        return true;
-      }
-    }
-  };
-
   var updateMissiles = function(missiles) {
+    var checkCollisions = function(missile) {
+      for (var i = game.levels.npcs.length; i--;) {
+        var npc = game.levels.npcs[i];
+
+        if(game.core.isCollision(npc, missile)) {
+          missile.explode();
+          npc.destroy();
+        }
+      }
+    };
+
     for (var i = missiles.length; i--;) {
       var missile = missiles[i];
       if(missile.state.isLive) {
         missile.move();
+        checkCollisions(missile);
       }
     }
   };
@@ -52,7 +52,7 @@
     for (var i = game.levels.npcs.length; i--;) {
       var npc = game.levels.npcs[i];
 
-      if(npc.isDestroyed) {
+      if(npc.state.isDestroyed) {
         anyDestroyed = true;
         delete game.levels.npcs[i];
 
@@ -71,7 +71,7 @@
 
       // if no npcs left, reload
       if(game.levels.npcs.length < 1) {
-        game.levels.loadNPCs();
+        game.levels.loadEnemies(store);
       }
     }
   };
@@ -97,7 +97,6 @@
       player = game.levels.players[uid];
 
       this.updateMissiles(player.ship.missiles);
-      // this.checkCollisions(missile, npcs);
 
       // no input to process
       if (!player.queue.length) continue;
