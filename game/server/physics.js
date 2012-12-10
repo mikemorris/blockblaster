@@ -15,10 +15,10 @@
   // processed command ids for client ack
   var processed = [];
 
-  var init = function(store) {
+  var init = function(socket, store) {
     // init physics loop, fixed time step in milliseconds
     setInterval((function() {
-      this.loop(store);
+      this.loop(socket, store);
     }).bind(this), 15);
 
     return this;
@@ -26,8 +26,14 @@
 
   var updateMissiles = function(missiles) {
     var checkCollisions = function(missile) {
-      for (var i = game.levels.npcs.length; i--;) {
-        var npc = game.levels.npcs[i];
+      var keys = Object.keys(game.levels.npcs);
+      var length = keys.length;
+      var key;
+      var npc;
+
+      for (var i = length; i--;) {
+        key = keys[i];
+        npc = game.levels.npcs[key];
 
         if(game.core.isCollision(npc, missile)) {
           missile.explode();
@@ -45,45 +51,51 @@
     }
   };
 
-  var updateNPCs = function(store) {
+  var updateNPCs = function(socket, store) {
     var anyDestroyed = false;
 
     // TODO: is this loop syntax faster?
-    for (var i = game.levels.npcs.length; i--;) {
-      var npc = game.levels.npcs[i];
+    var keys = Object.keys(game.levels.npcs);
+    var length = keys.length;
+    var uuid;
+    var npc;
+
+    for (var i = length; i--;) {
+      uuid = keys[i];
+      npc = game.levels.npcs[uuid];
+      uuid = npc.state.uuid;
 
       if(npc.state.isDestroyed) {
         anyDestroyed = true;
-        delete game.levels.npcs[i];
+        delete game.levels.npcs[uuid];
 
         // TODO: flag enemy as destroyed in redis
         // store.set('npc:' + i + ':x', npc.x, function(err, res) {});
       } else {
-        npc.move((function(i) {
-          store.set('npc:' + i + ':x', npc.state.x, function(err, res) {});
-        })(i));
+        npc.move((function(uuid) {
+          store.set('npc:' + uuid + ':x', npc.state.x, function(err, res) {});
+          store.set('npc:' + uuid + ':y', npc.state.y, function(err, res) {});
+        })(uuid));
       }
     }
 
     if(anyDestroyed) {
-      // clean null objects from npc array
-      game.levels.npcs.clean();
-
       // if no npcs left, reload
-      if(game.levels.npcs.length < 1) {
+      if(Object.keys(game.levels.npcs).length < 1) {
+        // TODO: break into single loadNPC events?
         game.levels.loadEnemies(store);
+        socket.io.sockets.emit('npcs', game.levels.npcs);
       }
     }
   };
 
-  var loop = function(store) {
-    // TODO: integrate into game.client.setDelta?
+  var loop = function(socket, store) {
     game.time.now = Date.now();
     game.time.delta = (game.time.now - game.time.then) / 1000;
     game.time.then = game.time.now;
 
     // update npc and object positions
-    this.updateNPCs(store);
+    this.updateNPCs(socket, store);
 
     // TODO: process input inside player loop
     var players = Object.keys(game.levels.players);

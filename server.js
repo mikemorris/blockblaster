@@ -12,7 +12,7 @@ var levels = require('./game/server/levels.js').init(channel.store);
 
 // TODO: init server loops inside levels?
 // require server loops
-var physics = require('./game/server/physics').init(channel.store);
+var physics = require('./game/server/physics').init(socket, channel.store);
 var update = require('./game/server/update').init(socket, channel.store);
 
 // http config

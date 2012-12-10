@@ -16,7 +16,7 @@
 
     // clear players object to purge disconnected ghosts
     game.players = {};
-    game.npcs = [];
+    game.npcs = {};
 
     // set methods to run every frame
     // TODO: decouple this asynchronously?
@@ -46,20 +46,20 @@
 
       socket.on('players:remove', function(uid) {
         delete game.players[uid];
-        game.npcs.clean();
       });
     });
 
     socket.on('npcs', function(data) {
       var npcs = Object.keys(data);
       var length = npcs.length;
-      var index;
+      var uuid;
+      var npc;
 
       // init NPCs using data from server
       for (var i = 0; i < length; i++) {
-        index = npcs[i];
-        npc = data[index];
-        game.npcs[index] = new game.Enemy(npc.state.x, npc.state.y, npc.direction);
+        uuid = npcs[i];
+        npc = data[uuid];
+        game.npcs[uuid] = new game.Enemy(npc.state.x, npc.state.y, npc.direction);
       }
 
       /*
@@ -69,8 +69,10 @@
       });
       */
 
-      socket.on('npcs:destroy', function(index) {
-        delete game.npcs[index];
+      socket.on('npc:destroy', function(uuid) {
+        // TODO: cleanup, remove from canvas
+        // delete game.npcs[uuid];
+        game.npcs[uuid].destroy();
       });
     });
 
@@ -142,7 +144,7 @@
         var npcs = Object.keys(data.npcs);
         var length_npc = npcs.length;
 
-        var index;
+        var uuid;
         var npc;
         var client_npc;
 
@@ -150,11 +152,11 @@
         if (length_npc) {
 
           for (var i = 0; i < length_npc; i++) {
-            index = npcs[i];
-            npc = data.npcs[index];
+            uuid = npcs[i];
+            npc = data.npcs[uuid];
 
             // authoritatively set internal state if player exists on client
-            client_npc = game.npcs[index];
+            client_npc = game.npcs[uuid];
 
             if (client_npc) {
               // update last acknowledged input
@@ -162,10 +164,12 @@
                 client_npc.ack = data.ack;
               }
 
-              // client_npc.sx = parseInt(npc.x);
+              // interpolate destroy animation?
+              client_npc.state.isHit = npc.isHit ? true : false;
+
+              client_npc.sx = parseInt(npc.x);
               client_npc.sy = parseInt(npc.y);
 
-              client_npc.state.x = parseInt(npc.x);
               client_npc.state.rotation = parseInt(npc.rotation);
 
               // queue server updates for entity interpolation
@@ -268,10 +272,16 @@
   };
 
   this.updateNPCs = function() {
+    var npcs = Object.keys(game.npcs);
+    var length = npcs.length;
+    var uuid;
+    var npc;
 
     // TODO: is this loop syntax faster?
-    for (var i = game.npcs.length; i--;) {
-      var npc = game.npcs[i];
+    for (var i = length; i--;) {
+      uuid = npcs[i];
+      npc = game.npcs[uuid];
+
       npc.interpolate();
       npc.draw();
     }

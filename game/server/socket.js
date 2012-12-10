@@ -35,7 +35,6 @@
     // delete active player and NPC set
     // remove players who were still connected when server shut down
     channel.store.del('players', function(err, res) {});
-    channel.store.del('npcs', function(err, res) {});
 
     this.listen(io);
 

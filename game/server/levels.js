@@ -15,9 +15,7 @@
 })(this, function(game) {
 
   var players = {};
-
-  // TODO: object by uuid instead of array?
-  var npcs = [];
+  var npcs = {};
 
   var init = function(store) {
     this.loadEnemies(store);
@@ -26,6 +24,8 @@
   };
 
   var loadEnemies = function(store) {
+    store.del('npcs', function(err, res) {});
+
     var enemies = [
       new game.Enemy(100, 25),
       new game.Enemy(250, 25),
@@ -45,18 +45,18 @@
       // closure to iterate properly
       (function(i, npcs) {
         var npc = enemies[i];
-        var index = npcs.length;
+        var uuid = npc.state.uuid;
 
-        npcs.push(npc);
+        npcs[uuid] = npc;
 
         // add npc to redis set
-        store.rpush('npcs', index, function(err, res) {
+        store.sadd('npcs', uuid, function(err, res) {
 
           // TODO: iterate over all attributes of Player?
-          var attr = 'npc:' + index + ':x';
+          var attr = 'npc:' + uuid + ':x';
 
           // init state in redis
-          store.set(attr, npc.x, function(err, res) {});
+          store.set(attr, npc.state.x, function(err, res) {});
         });
       })(i, this.npcs);
     }

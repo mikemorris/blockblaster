@@ -27,7 +27,6 @@
     store.smembers('players', function(err, res) {
       var players = res;
       var length = players.length;
-      var uid;
 
       async.forEach(
         players,
@@ -69,15 +68,14 @@
   };
 
   var updateNPCs = function(socket, store, data, callback) {
-    store.lrange('npcs', 0, -1, function(err, res) {
+    store.smembers('npcs', function(err, res) {
       var npcs = res;
       var length = npcs.length;
-      var index;
 
       async.forEach(
         npcs,
-        function(index, callback) {
-          updateNPC(socket, store, index, data, callback);
+        function(uuid, callback) {
+          updateNPC(socket, store, uuid, data, callback);
         }, function() {
           // notify async that iterator has completed
           if (typeof callback === 'function') callback();
@@ -86,25 +84,32 @@
     });
   };
 
-  var updateNPC = function(socket, store, index, data, callback) {
+  var updateNPC = function(socket, store, uuid, data, callback) {
     // defer to redis for absolute state
-    store.get('npc:' + index + ':x', function(err, res) {
+    // TODO: clean up this callback mess
+    store.get('npc:' + uuid + ':x', function(err, res) {
       var x = parseInt(res);
-      var npc = game.levels.npcs[index];
 
-      // publish state if changed
-      if (x && npc && npc.state && npc.state.x != x) {
-        npc.state.x = x;
+      store.get('npc:' + uuid + ':y', function(err, res) {
+        var y = parseInt(res);
+        var npc = game.levels.npcs[uuid];
 
-        if (npc.state.isDestroyed) {
-          socket.io.sockets.emit('npc:destroy', index);
+        // publish state if changed
+        // TODO: fix this to actually return on delta
+        if (x && npc && npc.state && npc.state.x != x) {
+          npc.state.x = x;
+          npc.state.y = y;
+
+          if (npc.state.isDestroyed) {
+            socket.io.sockets.emit('npc:destroy', uuid);
+          }
+          
+          data.npcs[uuid] = npc.state;
         }
-        
-        data.npcs.push(npc.state);
-      }
 
-      // notify async that iterator has completed
-      if (typeof callback === 'function') callback();
+        // notify async that iterator has completed
+        if (typeof callback === 'function') callback();
+      });
     });
   };
 
@@ -112,19 +117,19 @@
     // server time stamp
     data.time = game.time.now;
 
-    console.log(data);
+    //  console.log(data);
 
     /*
-    var keys = Object.keys(data.players);
-    var key;
-
-    var missiles;
-    var missile;
+    var keys = Object.keys(data.npcs);
+    var uuid;
     
     for (var i = 0; i < keys.length; i++) {
-      key = keys[i];
-      missiles = data.players[key].ship.missiles;
-      console.log(missiles);
+      uuid = keys[i];
+      npc = data.npcs[uuid];
+
+      if (npc.isHit) {
+        console.log(npc);
+      }
     }
     */
 
@@ -139,7 +144,7 @@
     // authoritative state and last processed input id
     var data = {};
     data.players = {};
-    data.npcs = []
+    data.npcs = {};
 
     // acknowledge most recent processed command and clear array
     if (physics.processed.length) {
