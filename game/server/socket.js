@@ -108,7 +108,7 @@
 
     var player = game.levels.players[uid];
     data.player = player.state || {};
-    data.player.ship = player.ship.state;
+    data.player.ship = player.ship;
 
     // only send new player to existing connections
     io.sockets.emit('players:add', data);
@@ -120,7 +120,7 @@
 
     for (var i = 0; i < keys.length; i++) {
       uid = keys[i];
-      player.ship = game.levels.players[uid].ship.state;
+      player.ship = game.levels.players[uid].ship;
       players[uid] = player;
     }
 
@@ -151,10 +151,10 @@
 
         // init state if not in redis already
         if (res !== null) {
-          player.ship.state.x = res;
+          player.ship.x = res;
           add(io, socket, rc, uid, game);
         } else {
-          rc.set(attr, player.ship.state.x, function(err, res) {
+          rc.set(attr, player.ship.x, function(err, res) {
             add(io, socket, rc, uid, game);
           });
         }

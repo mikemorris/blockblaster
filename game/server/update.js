@@ -15,15 +15,18 @@
 })(this, function(game, async, redis, _) {
 
   var init = function(socket, store) {
+
     // init server update loop, fixed time step in milliseconds
     setInterval((function() {
       this.loop(socket, store);
     }).bind(this), 45);
 
     return this;
+
   };
 
   var updatePlayers = function(store, data, callback) {
+
     store.smembers('players', function(err, res) {
       var players = res;
       var length = players.length;
@@ -38,9 +41,11 @@
         }
       );
     });
+
   };
 
   var updatePlayer = function(store, uid, data, callback) {
+
     // defer to redis for absolute state
     store.get('player:' + uid + ':ship:x', function(err, res) {
       var x = parseInt(res);
@@ -49,95 +54,124 @@
       // publish state if changed
       // TODO: delta?
       if (x !== null && player && player.ship.x != x) {
-        player.ship.state.x = x;
+        player.ship.x = x;
 
         data.players[uid] = {};
         data.players[uid].ship = {};
-        data.players[uid].ship.x = player.ship.state.x;
-        data.players[uid].ship.missiles = [];
+        data.players[uid].ship.state = {};
+
+        var keys = Object.keys(player.ship);
+        var length = keys.length;
+        var key;
+
+        for (var i = 0; i < length; i++) {
+          key = keys[i];
+
+          // TODO: clean this up, some values are false
+          if (player.ship[key] !== false) {
+            data.players[uid].ship.state[key] = player.ship[key];
+          }
+        }
+
+        data.players[uid].ship.state.missiles = [];
 
         for (var i = 0; i < player.ship.missiles.length; i++) {
-          var missile = player.ship.missiles[i].state;
-          data.players[uid].ship.missiles.push(missile);
+          var missile = {
+            sy: player.ship.missiles[i],
+            x: player.ship.missiles[i],
+            isLive: player.ship.missiles[i]
+          };
+          data.players[uid].ship.state.missiles.push(missile);
         }
       }
 
       // notify async that iterator has completed
       if (typeof callback === 'function') callback();
     });
+
   };
 
-  var updateNPCs = function(socket, store, data, callback) {
+  var updateNPCs = function(store, data, callback) {
+
+    // iterate over all npcs in redis
+    // TODO: should this just iterate over server NPCs instead?
     store.smembers('npcs', function(err, res) {
       var npcs = res;
       var length = npcs.length;
 
+      // don't return until all updateNPC calls have completed
       async.forEach(
         npcs,
         function(uuid, callback) {
-          updateNPC(socket, store, uuid, data, callback);
+          // only publish updates for NPCs originating from this server
+          var npc = game.levels.npcs[uuid];
+
+          if (npc) {
+            updateNPC(store, data, npc, uuid, callback);
+          }
         }, function() {
-          // notify async that iterator has completed
+          // notify async.parallel in loop that iterator has completed
           if (typeof callback === 'function') callback();
         }
       );
     });
+
   };
 
-  var updateNPC = function(socket, store, uuid, data, callback) {
-    // defer to redis for absolute state
-    // TODO: clean up this callback mess
-    store.get('npc:' + uuid + ':x', function(err, res) {
-      var x = parseInt(res);
+  var updateNPC = function(store, data, npc, uuid, callback) {
 
-      store.get('npc:' + uuid + ':y', function(err, res) {
-        var y = parseInt(res);
-        var npc = game.levels.npcs[uuid];
+    // defer to redis for absolute state, delta compression
+    store.hgetall('npc:' + uuid, function(err, res) {
 
-        // publish state if changed
-        // TODO: fix this to actually return on delta
-        if (x && npc && npc.state && npc.state.x != x) {
-          npc.state.x = x;
-          npc.state.y = y;
+      // save reference to old values and update state
+      var prev = npc.state;
 
-          if (npc.state.isDestroyed) {
-            socket.io.sockets.emit('npc:destroy', uuid);
-          }
-          
-          data.npcs[uuid] = npc.state;
+      // some scope issues with iterating over res and updating values individually?
+      var next = npc.state = res;
+
+      // init delta array for changed keys
+      var delta = [];
+
+      // iterate over new values and compare to old
+      var keys = Object.keys(next);
+      var length = keys.length;
+      var key;
+
+      for (var i = 0; i < length; i++) {
+        key = keys[i];
+
+        // check for changed values and push key to delta array
+        if (prev[key] !== next[key]) {
+          delta.push(key);
         }
+      }
 
-        // notify async that iterator has completed
-        if (typeof callback === 'function') callback();
-      });
+      // set changed values in data object
+      if (delta.length > 0) {
+        data.npcs[uuid] = _.pick(next, delta);
+      }
+
+      // notify async.forEach in updateNPCs that function has completed
+      if (typeof callback === 'function') callback();
+
     });
+
   };
 
   var update = function(socket, data) {
+
     // server time stamp
     data.time = game.time.now;
 
-    //  console.log(data);
-
-    /*
-    var keys = Object.keys(data.npcs);
-    var uuid;
-    
-    for (var i = 0; i < keys.length; i++) {
-      uuid = keys[i];
-      npc = data.npcs[uuid];
-
-      if (npc.isHit) {
-        console.log(npc);
-      }
-    }
-    */
+    console.log(data);
 
     // return delta object to client
     socket.io.sockets.emit('state:update', data);
+
   };
 
   var loop = function(socket, store) {
+
     var physics = game.physics;
 
     // create data object containing
@@ -152,9 +186,10 @@
       physics.processed = [];
     }
 
+    // get updated states from redis, then return delta object to client
     async.parallel([
       function(callback) { updatePlayers(store, data, callback) },
-      function(callback) { updateNPCs(socket, store, data, callback) }
+      function(callback) { updateNPCs(store, data, callback) }
     ], function() {
       update(socket, data);
     });

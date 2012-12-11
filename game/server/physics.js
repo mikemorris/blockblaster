@@ -44,7 +44,7 @@
 
     for (var i = missiles.length; i--;) {
       var missile = missiles[i];
-      if(missile.state.isLive) {
+      if(missile.isLive) {
         missile.move();
         checkCollisions(missile);
       }
@@ -57,26 +57,31 @@
     // TODO: is this loop syntax faster?
     var keys = Object.keys(game.levels.npcs);
     var length = keys.length;
-    var uuid;
-    var npc;
 
-    for (var i = length; i--;) {
-      uuid = keys[i];
-      npc = game.levels.npcs[uuid];
-      uuid = npc.state.uuid;
+    for (var i = 0; i < length; i++) {
+      (function(i) {
+        var uuid = keys[i];
+        var npc = game.levels.npcs[uuid];
 
-      if(npc.state.isDestroyed) {
-        anyDestroyed = true;
-        delete game.levels.npcs[uuid];
+        if(npc.isDestroyed) {
+          anyDestroyed = true;
+          delete game.levels.npcs[uuid];
 
-        // TODO: flag enemy as destroyed in redis
-        // store.set('npc:' + i + ':x', npc.x, function(err, res) {});
-      } else {
-        npc.move((function(uuid) {
-          store.set('npc:' + uuid + ':x', npc.state.x, function(err, res) {});
-          store.set('npc:' + uuid + ':y', npc.state.y, function(err, res) {});
-        })(uuid));
-      }
+          // TODO: flag enemy as destroyed in redis
+          // store.set('npc:' + i + ':x', npc.x, function(err, res) {});
+        } else {
+          npc.move(store, function(uuid, delta) {
+            var keys = Object.keys(delta);
+            var length = keys.length;
+            var key;
+
+            for (var i = 0; i < length; i++) {
+              key = keys[i];
+              store.hset('npc:' + uuid, key, delta[key], function(err, res) {});
+            }
+          });
+        }
+      })(i);
     }
 
     if(anyDestroyed) {

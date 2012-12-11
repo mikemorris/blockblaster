@@ -20,24 +20,27 @@
 })(this, function(game, uuid) {
 
 	var Enemy = function(x, y, direction) {
+    this.uuid = uuid ? uuid.v4() : false;
+
 		var properties = {
-      uuid: uuid ? uuid.v4() : false,
-			color: 'rgba(0, 0, 255, 0.25)',
-			direction: direction || 1,
-			maxMissiles: 5,
+			x: x + game.core.getRandomNumber(-25, 25),
+			y: y,
 			speed: 100,
 			vx: 100,
-			x: x + game.core.getRandomNumber(-25, 25),
-			y: y
+      vy: 0,
+			direction: direction || 1
 		};
 
 		this.set(properties);
 
+    this.y = y;
     this.width = 50;
     this.height = 30;
-
+    this.color = 'rgba(0, 0, 255, 0.25)';
     this.image = game.Image ? new game.Image('images/enemy.png') : false;
+
     this.missiles = [];
+    this.maxMissiles = 5;
 
     this.range = 50;
 
@@ -54,57 +57,67 @@
 	Enemy.prototype = new game.Entity();
 
 	Enemy.prototype.destroy = function() {
-		this.state.isHit = true;
-		this.state.vy = -200;
+		this.isHit = true;
+		this.vy = -200;
 		// this.isDestroyed = true;
 	};
 
 	Enemy.prototype.drawType = function() {
 		if(game.debug) {
-			if(this.state.isDestroyed) {
-				this.state.color = 'red';
+			if(this.isDestroyed) {
+				this.color = 'red';
 			}
 			// Show hit-area
-			game.ctx.fillStyle = this.state.color;
+			game.ctx.fillStyle = this.color;
 			game.ctx.fillRect(0,0,this.width, this.height);
 			game.ctx.fill();
 		}
 		this.image.draw();
 	};
 
-	Enemy.prototype.move = function(callback) {
+	Enemy.prototype.move = function(store, callback) {
 
-		this.state.x += this.state.vx * this.state.direction * game.time.delta;
+    var delta = {};
+
+		this.x += this.vx * this.direction * game.time.delta;
+    delta['x'] = this.x;
 
     // missile impact
-		if(this.state.isHit) {
-			this.state.y += this.state.vy * game.time.delta;
-			this.state.rotation += 20 * game.time.delta;
-			this.state.isDestroyed = this.state.y < -Math.max(this.height, this.width);
+		if(this.isHit) {
+			this.y += this.vy * game.time.delta;
+      delta['y'] = this.y;
+
+			this.rotation += 20 * game.time.delta;
+      delta['rotation'] = this.rotation;
+
+			this.isDestroyed = this.y < -Math.max(this.height, this.width);
+      delta['isDestroyed'] = this.isDestroyed;
 		} else {
-			if(this.state.x > this.origin.x + this.range) {
-				this.state.direction = -1;
-			} else if (this.state.x < this.origin.x - this.range) {
-				this.state.direction = 1;
+			if(this.x > this.origin.x + this.range) {
+				this.direction = -1;
+			} else if (this.x < this.origin.x - this.range) {
+				this.direction = 1;
 			}
+
+      delta['direction'] = this.direction;
 		}
 
-    if (typeof callback === 'function') callback();
+    if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
   Enemy.prototype.interpolate = function() {
     // entity interpolation
-    var dx = Math.abs(this.sx - this.state.x);
-    var dy = Math.abs(this.sy - this.state.y);
+    var dx = Math.abs(this.sx - this.x);
+    var dy = Math.abs(this.sy - this.y);
     var difference = Math.max(dx, dy);
 
     // return if no server updates to process
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (dx > 100) this.state.x = this.sx;
-    if (dy > 100) this.state.y = this.sy;
+    if (dx > 100) this.x = this.sx;
+    if (dy > 100) this.y = this.sy;
 
     var x;
     var y;
@@ -149,8 +162,10 @@
     y = game.core.lerp(current.y, target.y, timePoint);
 
     // apply smoothing
-    this.state.x = game.core.lerp(this.state.x, x, game.time.delta * game.smoothing);
-    this.state.y = game.core.lerp(this.state.y, y, game.time.delta * game.smoothing);
+    this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+
+    // TODO: fix this bug, sy is sometimes NaN
+    // this.y = game.core.lerp(this.y, y, game.time.delta * game.smoothing);
   };
 
   return Enemy;

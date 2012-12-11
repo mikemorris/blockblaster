@@ -22,7 +22,7 @@
     // TODO: decouple this asynchronously?
     this.actions = [
       this.clearCanvas,
-      this.updatePlayers,
+      // this.updatePlayers,
       this.updateNPCs
     ];
 
@@ -36,6 +36,7 @@
       // init players using data from server
       for (var i = 0; i < length; i++) {
         uid = players[i];
+        console.log(data[uid]);
         game.players[uid] = new game.Player(data[uid]);
       }
 
@@ -59,7 +60,7 @@
       for (var i = 0; i < length; i++) {
         uuid = npcs[i];
         npc = data[uuid];
-        game.npcs[uuid] = new game.Enemy(npc.state.x, npc.state.y, npc.direction);
+        game.npcs[uuid] = new game.Enemy(npc.x, npc.y, npc.direction);
       }
 
       /*
@@ -128,12 +129,14 @@
             var missiles = player.ship.missiles;
             var missile;
 
+            console.log(player.ship.missiles);
+
             for (var j = 0; j < missiles.length; j++) {
               missile = missiles[j];
 
               client.ship.missiles[j].sy = parseInt(missile.y);
-              client.ship.missiles[j].state.x = parseInt(missile.x);
-              client.ship.missiles[j].state.isLive = missile.isLive;
+              client.ship.missiles[j].x = parseInt(missile.x);
+              client.ship.missiles[j].isLive = missile.isLive;
 
               client.ship.missiles[j].queue.server.push(missile);
             }
@@ -165,12 +168,13 @@
               }
 
               // interpolate destroy animation?
-              client_npc.state.isHit = npc.isHit ? true : false;
+              client_npc.isHit = npc.isHit ? true : false;
 
-              client_npc.sx = parseInt(npc.x);
-              client_npc.sy = parseInt(npc.y);
+              // TODO: clean this up and iterate over properties
+              client_npc.sx = typeof(npc.x) !== 'undefined' ? parseInt(npc.x) : client_npc.x;
+              client_npc.sy = typeof(npc.y) !== 'undefined' ? parseInt(npc.y) : client_npc.y;
 
-              client_npc.state.rotation = parseInt(npc.rotation);
+              client_npc.rotation = parseInt(npc.rotation);
 
               // queue server updates for entity interpolation
               client_npc.queue.server.push(npc);
@@ -245,7 +249,7 @@
       for (var i = missiles.length; i--;) {
         var missile = missiles[i];
 
-        if(missile.state.isLive) {
+        if(missile.isLive) {
           missile.interpolate();
           missile.draw();
         }

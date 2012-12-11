@@ -4,13 +4,6 @@
     module.exports = factory({
       'Enemy': require('../core/types/Enemy.js')
     });
-  } else if (typeof define === 'function' && define.amd) {
-    // AMD
-    define(factory);
-  } else {
-    // browser globals (root is window)
-    root.GAME.returnExports = factory(root.GAME || {});
-    // window.GAME.core = factory(window.GAME || {});
   }
 })(this, function(game) {
 
@@ -24,6 +17,7 @@
   };
 
   var loadEnemies = function(store) {
+    // TODO: this shouldn't be necessary?
     store.del('npcs', function(err, res) {});
 
     var enemies = [
@@ -43,22 +37,32 @@
 
     for (var i = 0; i < length; i++) {
       // closure to iterate properly
-      (function(i, npcs) {
+      (function(i) {
         var npc = enemies[i];
-        var uuid = npc.state.uuid;
+        var uuid = npc.uuid;
 
+        // add npc to server object
         npcs[uuid] = npc;
+        console.log('loadEnemies', uuid, npc.y);
 
         // add npc to redis set
-        store.sadd('npcs', uuid, function(err, res) {
-
-          // TODO: iterate over all attributes of Player?
-          var attr = 'npc:' + uuid + ':x';
-
-          // init state in redis
-          store.set(attr, npc.state.x, function(err, res) {});
-        });
-      })(i, this.npcs);
+        // and init npc redis state hash
+        store.multi()
+          .sadd('npcs', npc.uuid)
+          .hmset(
+            'npc:' + npc.uuid, 
+            'x', npc.x,
+            'y', npc.y,
+            'speed', npc.speed,
+            'vx', npc.vx,
+            'direction', npc.direction
+          )
+          .exec(function(err, res) {
+            store.hgetall('npc:' + uuid, function(err, res) {
+              console.log('redis', uuid, res.y);
+            });
+          });
+      })(i);
     }
   };
 

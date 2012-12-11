@@ -26,7 +26,14 @@
 
     // init from existing state
     if (player) {
-      this.ship.state = player.ship;
+      var keys = Object.keys(player.ship);
+      var length = keys.length;
+      var key;
+
+      for (var i = 0; i < length; i++) {
+        key = keys[i];
+        this.ship[key] = player.ship[key];
+      }
     }
 
     // input queue

@@ -36,45 +36,45 @@
 	Missile.prototype = new game.Rectangle();
 
 	Missile.prototype.explode = function() {
-		this.state.vy = 0;
+		this.vy = 0;
 		this.reload();
 	};
 
 	Missile.prototype.fire = function(ship) {
-		this.state.x = ship.state.x + ship.width / 2 - this.width / 2;
-		this.state.y = ship.state.y;
-		this.state.vy = this.state.speed;
+		this.x = ship.state.x + ship.width / 2 - this.width / 2;
+		this.y = ship.state.y;
+		this.vy = this.speed;
 
     // switch missile to active state
-		this.state.isLive = true;
+		this.isLive = true;
 	};
 
 	Missile.prototype.move = function(direction) {
-		this.state.y -= this.state.vy * game.time.delta;
+		this.y -= this.vy * game.time.delta;
 
     // reload if offscreen
-		if(this.state.y < (0 - this.height)) {
+		if(this.y < (0 - this.height)) {
 			this.reload();
 		}
 	};
 
 	Missile.prototype.reload = function() {
-		this.state.x = -this.height;
-		this.state.y = 0;
+		this.x = -this.height;
+		this.y = 0;
 
     // reload missile
-		this.state.isLive = false;
+		this.isLive = false;
 	};
 
   Missile.prototype.interpolate = function() {
     // entity interpolation
-    var difference = Math.abs(this.sy - this.state.y);
+    var difference = Math.abs(this.sy - this.y);
 
     // return if no server updates to process
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (difference > 100) this.state.y = this.sy;
+    if (difference > 100) this.y = this.sy;
 
     var y;
     var vy;
@@ -118,10 +118,10 @@
     y = game.core.lerp(current.y, target.y, timePoint);
 
     // apply smoothing
-    this.state.y = game.core.lerp(this.state.y, y, game.time.delta * game.smoothing);
+    this.y = game.core.lerp(this.y, y, game.time.delta * game.smoothing);
 
     // reload if offscreen
-		if(this.state.y < (0 - this.height)) {
+		if(this.y < (0 - this.height)) {
 			this.reload();
 		}
   };
