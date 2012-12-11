@@ -1,12 +1,15 @@
 (function(root, factory) {
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
-    module.exports = factory({
-      'core': require('../core'),
-      'time': require('../time'),
-      'Entity': require('./Entity'),
-      'Missile': require('./Missile')
-    });
+    module.exports = factory(
+      {
+        'core': require('../core'),
+        'time': require('../time'),
+        'Entity': require('./Entity'),
+        'Missile': require('./Missile')
+      },
+      require('node-uuid')
+    );
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(factory);
@@ -15,9 +18,11 @@
     root.GAME = root.GAME || {};
     root.GAME.Ship = factory(root.GAME || {});
   }
-})(this, function(game) {
+})(this, function(game, uuid) {
 
 	var Ship = function(properties) {
+    this.uuid = uuid ? uuid.v4() : false;
+
 		this.set(properties);
 		this.setDefaults();
 		this.loadMissiles();
@@ -171,8 +176,7 @@
     }
 
     // interpolated position
-    // TODO: jump to position if large delta
-    x = game.core.lerp(current.ship.x, target.ship.x, timePoint);
+    x = game.core.lerp(current.ship.state.x, target.ship.state.x, timePoint);
 
     // apply smoothing
     this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
@@ -225,6 +229,22 @@
 	Ship.prototype.die = function() {
 		console.log('die!');
 	};
+
+	Ship.prototype.getState = function() {
+    // init missiles
+    var missiles = [];
+
+    // iterate over missiles
+    for (var i = 0; i < this.missiles.length; i++) {
+      missiles.push(this.missiles[i].getState());
+    }
+
+    return {
+      uuid: this.uuid,
+      state: this.state,
+      missiles: missiles
+    };
+  };
 
   return Ship;
 

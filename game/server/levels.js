@@ -41,10 +41,6 @@
         var npc = enemies[i];
         var uuid = npc.uuid;
 
-        // add npc to server object
-        npcs[uuid] = npc;
-        console.log('loadEnemies', uuid, npc.y);
-
         // add npc to redis set
         // and init npc redis state hash
         store.multi()
@@ -58,9 +54,8 @@
             'direction', npc.direction
           )
           .exec(function(err, res) {
-            store.hgetall('npc:' + uuid, function(err, res) {
-              console.log('redis', uuid, res.y);
-            });
+            // add npc to server object
+            npcs[uuid] = npc;
           });
       })(i);
     }

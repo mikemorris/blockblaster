@@ -34,59 +34,20 @@
       async.forEach(
         players,
         function(uid, callback) {
-          updatePlayer(store, uid, data, callback);
+          // only publish updates for players originating from this server
+          var player = game.levels.players[uid];
+
+          if (player) {
+            updatePlayer(store, data, uid, player, callback);
+          } else {
+            // notify async.forEach that function has completed
+            if (typeof callback === 'function') callback();
+          }
         }, function() {
           // notify async that iterator has completed
           if (typeof callback === 'function') callback();
         }
       );
-    });
-
-  };
-
-  var updatePlayer = function(store, uid, data, callback) {
-
-    // defer to redis for absolute state
-    store.get('player:' + uid + ':ship:x', function(err, res) {
-      var x = parseInt(res);
-      var player = game.levels.players[uid];
-
-      // publish state if changed
-      // TODO: delta?
-      if (x !== null && player && player.ship.x != x) {
-        player.ship.x = x;
-
-        data.players[uid] = {};
-        data.players[uid].ship = {};
-        data.players[uid].ship.state = {};
-
-        var keys = Object.keys(player.ship);
-        var length = keys.length;
-        var key;
-
-        for (var i = 0; i < length; i++) {
-          key = keys[i];
-
-          // TODO: clean this up, some values are false
-          if (player.ship[key] !== false) {
-            data.players[uid].ship.state[key] = player.ship[key];
-          }
-        }
-
-        data.players[uid].ship.state.missiles = [];
-
-        for (var i = 0; i < player.ship.missiles.length; i++) {
-          var missile = {
-            sy: player.ship.missiles[i],
-            x: player.ship.missiles[i],
-            isLive: player.ship.missiles[i]
-          };
-          data.players[uid].ship.state.missiles.push(missile);
-        }
-      }
-
-      // notify async that iterator has completed
-      if (typeof callback === 'function') callback();
     });
 
   };
@@ -108,12 +69,107 @@
 
           if (npc) {
             updateNPC(store, data, npc, uuid, callback);
+          } else {
+            // notify async.forEach that function has completed
+            if (typeof callback === 'function') callback();
           }
         }, function() {
           // notify async.parallel in loop that iterator has completed
           if (typeof callback === 'function') callback();
         }
       );
+    });
+
+  };
+
+  var updatePlayer = function(store, data, uid, player, callback) {
+
+    var delta = {};
+
+    // TODO: DRY THIS UP!!!
+    // defer to redis for absolute state, delta compression
+    store.hgetall('player:' + uid, function(err, res) {
+
+      // save reference to old values and update state
+      var prev = player.state;
+
+      // some scope issues with iterating over res and updating values individually?
+      var next = player.state = res || {};
+
+      // init delta array for changed keys
+      var deltaKeys = [];
+
+      // iterate over new values and compare to old
+      var keys = Object.keys(next);
+      var length = keys.length;
+      var key;
+
+      for (var i = 0; i < length; i++) {
+        key = keys[i];
+
+        // check for changed values and push key to deltaKeys array
+        if (prev[key] !== next[key]) {
+          deltaKeys.push(key);
+        }
+      }
+
+      // set changed values in data object
+      if (deltaKeys.length > 0) {
+        delta.state = _.pick(next, deltaKeys);
+      }
+
+      store.hgetall('player:' + uid + ':ship', function(err, res) {
+
+        // save reference to old values and update state
+        var prev = player.ship.state;
+
+        // some scope issues with iterating over res and updating values individually?
+        var next = player.ship.state = res;
+
+        // init delta array for changed keys
+        var deltaKeys = [];
+
+        // iterate over new values and compare to old
+        var keys = Object.keys(next);
+        var length = keys.length;
+        var key;
+
+        for (var i = 0; i < length; i++) {
+          key = keys[i];
+
+          // check for changed values and push key to deltaKeys array
+          if (prev[key] !== next[key]) {
+            deltaKeys.push(key);
+          }
+        }
+
+        // set changed values in data object
+        if (deltaKeys.length > 0) {
+          delta.ship = {};
+          delta.ship.state = _.pick(next, deltaKeys);
+
+          // init missiles
+          var missiles = [];
+          var missile;
+
+          // iterate over missiles
+          for (var i = 0; i < player.ship.missiles.length; i++) {
+            missile = {};
+            missile.state = player.ship.missiles[i].getState();
+            missiles.push(missile);
+          }
+
+          delta.ship.missiles = missiles;
+        }
+
+        // set changed values in data object
+        data.players[uid] = delta;
+
+        // notify async that iterator has completed
+        if (typeof callback === 'function') callback();
+        
+      });
+
     });
 
   };
@@ -163,7 +219,15 @@
     // server time stamp
     data.time = game.time.now;
 
-    console.log(data);
+    var keys = Object.keys(data.players);
+    var key;
+
+    for (var i = 0; i < keys.length; i++) {
+      key = keys[i];
+      if (data.players[key].ship) {
+        console.log(data.players[key].ship.state);
+      }
+    }
 
     // return delta object to client
     socket.io.sockets.emit('state:update', data);

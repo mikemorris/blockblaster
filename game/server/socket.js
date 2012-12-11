@@ -64,7 +64,7 @@
 
         if (res !== null) {
           rc.get('player:' + res, function(err, uid) {
-            addPlayer(io, socket, rc, uid);
+            initPlayer(io, socket, rc, uid);
           });
         } else {
           rc.incr('players:uid:next', function(err, uid) {
@@ -72,7 +72,7 @@
               .set('player:' + uid, id)
               .set('uid:' + id, uid)
               .exec(function(err, res) {
-                addPlayer(io, socket, rc, uid);
+                initPlayer(io, socket, rc, uid);
               });
           });
         }
@@ -101,35 +101,43 @@
 
   };
 
-  // TODO: entity id for enemies?
-  var add = function(io, socket, rc, uid, game) {
+  var addPlayer = function(io, socket, rc, uid, player) {
+
+    // add player to server object
+    game.levels.players[uid] = player;
+
+    // init data object and attach player uid
     var data = {};
     data.uid = uid;
 
-    var player = game.levels.players[uid];
-    data.player = player.state || {};
-    data.player.ship = player.ship;
+    // init player
+    data.player = player.getState();
 
     // only send new player to existing connections
     io.sockets.emit('players:add', data);
 
-    // TODO: fix uid reuse
-    var keys = Object.keys(game.levels.players);
     var players = {};
-    var player = {};
+    var keys = Object.keys(game.levels.players);
+    var key;
+    var player;
 
     for (var i = 0; i < keys.length; i++) {
-      uid = keys[i];
-      player.ship = game.levels.players[uid].ship;
-      players[uid] = player;
+      key = keys[i];
+      player = game.levels.players[key];
+      players[key] = player.getState();
     }
 
     // send full player list to new connection
     io.sockets.socket(socket.id).emit('players', players);
     io.sockets.socket(socket.id).emit('npcs', game.levels.npcs);
+
   };
 
-  var addPlayer = function(io, socket, rc, uid) {
+  var initPlayer = function(io, socket, rc, uid) {
+
+    // init player
+    var player = new game.Player();
+
     // store uid in the socket session for this client
     socket.uid = uid;
     
@@ -137,35 +145,39 @@
     io.sockets.socket(socket.id).emit('uid', uid.toString());
 
     // add player to redis set
+    // and init npc redis state hash
     rc.sadd('players', uid, function(err, res) {
-      // init player
-      var player = game.levels.players[uid] = new game.Player();
 
-      // TODO: iterate over all attributes of Player?
-      var attr = 'player:' + uid + ':ship:x';
+      // check previous state for returning players
+      rc.hgetall('player:' + uid + ':ship', function(err, res) {
 
-      // broadcast players after redis sync
-      // sync state to redis
-      rc.get(attr, function(err, res) {
-        if (err) { throw err; }
-
-        // init state if not in redis already
-        if (res !== null) {
-          player.ship.x = res;
-          add(io, socket, rc, uid, game);
+        if (res === null) {
+          // init state if not in redis already
+          rc.hmset(
+            'player:' + uid + ':ship', 
+            'x', player.ship.x,
+            'y', player.ship.y,
+            'speed', player.ship.speed,
+            'vx', player.ship.vx,
+            function(err, res) {
+              addPlayer(io, socket, rc, uid, player);
+            }
+          );
         } else {
-          rc.set(attr, player.ship.x, function(err, res) {
-            add(io, socket, rc, uid, game);
-          });
+          // otherwise, set state from redis
+          player.ship.state = res;
+          addPlayer(io, socket, rc, uid, player);
         }
       });
+
     });
+
   };
 
   return {
     listen: listen,
-    add: add,
     addPlayer: addPlayer,
+    initPlayer: initPlayer,
     init: init
   };
 

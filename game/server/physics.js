@@ -133,11 +133,11 @@
           // pipe valid commands directly to redis
           // passing a negative value to redis.incrby() decrements
           if (vx !== 0) {
-            store.incrby('player:' + uid + ':ship:x', vx, function(err, res) {});
+            store.hincrby('player:' + uid + ':ship', 'x', vx, function(err, res) {});
           }
 
           if (vy !== 0) {d
-            store.incrby('player:' + uid + ':ship:y', vy, function(err, res) {});
+            store.hincrby('player:' + uid + ':ship', 'y', vy, function(err, res) {});
           }
 
           if(move.input.spacebar) {

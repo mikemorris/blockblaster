@@ -22,7 +22,7 @@
     // TODO: decouple this asynchronously?
     this.actions = [
       this.clearCanvas,
-      // this.updatePlayers,
+      this.updatePlayers,
       this.updateNPCs
     ];
 
@@ -109,36 +109,38 @@
               client.ship.ack = data.ack;
             }
 
-            client.ship.sx = parseInt(player.ship.x);
-            client.ship.sy = parseInt(player.ship.y);
+            // TODO: clean this up
+            if (player.ship) {
+              client.ship.sx = parseInt(player.ship.state.x);
+              client.ship.sy = parseInt(player.ship.state.y);
 
-            // reconcile client prediction with server
-            if (uid === game.uid) {
-              client.ship.reconcile();
-            } else {
-              // queue server updates for entity interpolation
-              client.ship.queue.server.push(player);
-              
-              // splice array, keeping BUFFER_SIZE most recent items
-              if (client.ship.queue.server.length >= game.buffersize) {
-                client.ship.queue.server.splice(-game.buffersize);
+              // reconcile client prediction with server
+              if (uid === game.uid) {
+                client.ship.reconcile();
+              } else {
+                // queue server updates for entity interpolation
+                client.ship.queue.server.push(player);
+                
+                // splice array, keeping BUFFER_SIZE most recent items
+                if (client.ship.queue.server.length >= game.buffersize) {
+                  client.ship.queue.server.splice(-game.buffersize);
+                }
               }
-            }
 
-            // update missiles
-            var missiles = player.ship.missiles;
-            var missile;
+              // update missiles
+              var missiles = player.ship.missiles;
+              var missile;
 
-            console.log(player.ship.missiles);
+              for (var j = 0; j < missiles.length; j++) {
+                missile = missiles[j];
 
-            for (var j = 0; j < missiles.length; j++) {
-              missile = missiles[j];
+                client.ship.missiles[j].sy = parseInt(missile.state.y);
+                client.ship.missiles[j].x = parseInt(missile.state.x);
+                client.ship.missiles[j].isLive = missile.state.isLive;
 
-              client.ship.missiles[j].sy = parseInt(missile.y);
-              client.ship.missiles[j].x = parseInt(missile.x);
-              client.ship.missiles[j].isLive = missile.isLive;
+                client.ship.missiles[j].queue.server.push(missile);
+              }
 
-              client.ship.missiles[j].queue.server.push(missile);
             }
           }
         }

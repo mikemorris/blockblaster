@@ -1,10 +1,13 @@
 (function(root, factory) {
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
-    module.exports = factory({
-      'time': require('../time.js'),
-      'Rectangle': require('./Rectangle')
-    });
+    module.exports = factory(
+      {
+        'time': require('../time.js'),
+        'Rectangle': require('./Rectangle')
+      },
+      require('node-uuid')
+    );
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(factory);
@@ -13,9 +16,11 @@
     root.GAME = root.GAME || {};
     root.GAME.Missile = factory(root.GAME || {});
   }
-})(this, function(game) {
+})(this, function(game, uuid) {
 
 	var Missile = function(ship) {
+    this.uuid = uuid ? uuid.v4() : false;
+
 		var properties = {
 			speed: 300,
 			vy: 0,
@@ -41,8 +46,8 @@
 	};
 
 	Missile.prototype.fire = function(ship) {
-		this.x = ship.state.x + ship.width / 2 - this.width / 2;
-		this.y = ship.state.y;
+		this.x = ship.x + ship.width / 2 - this.width / 2;
+		this.y = ship.y;
 		this.vy = this.speed;
 
     // switch missile to active state
@@ -115,7 +120,7 @@
 
     // interpolated position
     // TODO: jump to position if large delta
-    y = game.core.lerp(current.y, target.y, timePoint);
+    y = game.core.lerp(current.state.y, target.state.y, timePoint);
 
     // apply smoothing
     this.y = game.core.lerp(this.y, y, game.time.delta * game.smoothing);
@@ -124,6 +129,17 @@
 		if(this.y < (0 - this.height)) {
 			this.reload();
 		}
+  };
+
+	Missile.prototype.getState = function() {
+    return {
+      uuid: this.uuid,
+      state: {
+        y: this.y,
+        x: this.x,
+        isLive: this.isLive
+      }
+    };
   };
 
   return Missile;

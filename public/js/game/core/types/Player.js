@@ -26,13 +26,13 @@
 
     // init from existing state
     if (player) {
-      var keys = Object.keys(player.ship);
+      var keys = Object.keys(player.ship.state);
       var length = keys.length;
       var key;
 
       for (var i = 0; i < length; i++) {
         key = keys[i];
-        this.ship[key] = player.ship[key];
+        this.ship[key] = player.ship.state[key];
       }
     }
 
@@ -44,6 +44,13 @@
 	};
 
 	Player.prototype = new game.Entity();
+
+	Player.prototype.getState = function() {
+    return {
+      state: this.state,
+      ship: this.ship.getState()
+    };
+  };
 
   return Player;
 
