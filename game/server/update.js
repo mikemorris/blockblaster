@@ -163,7 +163,9 @@
         }
 
         // set changed values in data object
-        data.players[uid] = delta;
+        if (Object.keys(delta).length > 0) {
+          data.players[uid] = delta;
+        }
 
         // notify async that iterator has completed
         if (typeof callback === 'function') callback();
@@ -219,6 +221,9 @@
     // server time stamp
     data.time = game.time.now;
 
+    console.log(data);
+
+    /*
     var keys = Object.keys(data.players);
     var key;
 
@@ -228,6 +233,7 @@
         console.log(data.players[key].ship.state);
       }
     }
+    */
 
     // return delta object to client
     socket.io.sockets.emit('state:update', data);
