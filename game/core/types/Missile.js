@@ -33,6 +33,8 @@
     this.width = 10;
     this.height = 20;
 
+    this.ship = ship;
+
     // interpolation queue
     this.queue = {};
     this.queue.server = [];
@@ -45,9 +47,9 @@
 		this.reload();
 	};
 
-	Missile.prototype.fire = function(ship) {
-		this.x = ship.x + ship.width / 2 - this.width / 2;
-		this.y = ship.y;
+	Missile.prototype.fire = function() {
+		this.x = this.ship.x + this.ship.width / 2 - this.width / 2;
+		this.y = this.ship.y;
 		this.vy = this.speed;
 
     // switch missile to active state
@@ -65,7 +67,7 @@
 
 	Missile.prototype.reload = function() {
 		this.x = -this.height;
-		this.y = 0;
+		this.y = this.ship.y;
 
     // reload missile
 		this.isLive = false;
@@ -79,7 +81,7 @@
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (difference > 100) this.y = this.sy;
+    if (difference > 150) this.y = this.sy;
 
     var y;
     var vy;
@@ -119,7 +121,6 @@
     }
 
     // interpolated position
-    // TODO: jump to position if large delta
     y = game.core.lerp(current.state.y, target.state.y, timePoint);
 
     // apply smoothing

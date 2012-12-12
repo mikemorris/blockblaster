@@ -96,7 +96,9 @@
 	};
 
 	Ship.prototype.move = function() {
+
 		this.x += this.vx;
+
 	};
 
   Ship.prototype.reconcile = function() {
@@ -136,7 +138,7 @@
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (difference > 100) this.x = this.sx;
+    if (difference > 150) this.x = this.sx;
 
     var x;
     var vx;
@@ -200,7 +202,7 @@
 
     for (var i = 0; i < this.missiles.length; i++) {
       missile = this.missiles[i];
-      if (!missile.state.isLive) {
+      if (!missile.isLive) {
         missiles.push(missile);
       }
     }
@@ -211,7 +213,7 @@
 
 		if(readyToFire) {
 			this.fireButtonReleased = false;
-			missiles[0].fire(this);
+			missiles[0].fire();
 			this.then = this.now;
 		}
 	};

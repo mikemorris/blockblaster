@@ -144,26 +144,29 @@
         }
 
         // set changed values in data object
-        if (deltaKeys.length > 0) {
+        if (deltaKeys.length) {
           delta.ship = {};
           delta.ship.state = _.pick(next, deltaKeys);
+        }
 
-          // init missiles
-          var missiles = [];
-          var missile;
+        // init missiles
+        var missiles = [];
+        var missile;
 
-          // iterate over missiles
-          for (var i = 0; i < player.ship.missiles.length; i++) {
-            missile = {};
-            missile.state = player.ship.missiles[i].getState();
-            missiles.push(missile);
-          }
+        // iterate over missiles
+        for (var i = 0; i < player.ship.missiles.length; i++) {
+          missile = player.ship.missiles[i].getState();
+          missiles.push(missile);
+        }
 
+        if (missiles) {
+          delta.ship = delta.ship || {};
           delta.ship.missiles = missiles;
+          console.log(delta.ship.missiles);
         }
 
         // set changed values in data object
-        if (Object.keys(delta).length > 0) {
+        if (Object.keys(delta).length) {
           data.players[uid] = delta;
         }
 
@@ -221,7 +224,7 @@
     // server time stamp
     data.time = game.time.now;
 
-    console.log(data);
+    // console.log(data);
 
     /*
     var keys = Object.keys(data.players);
@@ -230,7 +233,7 @@
     for (var i = 0; i < keys.length; i++) {
       key = keys[i];
       if (data.players[key].ship) {
-        console.log(data.players[key].ship.state);
+        console.log(data.players[key].ship);
       }
     }
     */

@@ -32,7 +32,10 @@
 
       for (var i = 0; i < length; i++) {
         key = keys[i];
-        this.ship[key] = player.ship.state[key];
+
+        // watch out for server passing redis state as strings
+        // canvas will only draw Numbers
+        this.ship[key] = parseInt(player.ship.state[key]);
       }
     }
 

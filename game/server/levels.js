@@ -10,13 +10,13 @@
   var players = {};
   var npcs = {};
 
-  var init = function(store) {
-    this.loadEnemies(store);
+  var init = function(socket, store) {
+    this.loadEnemies(socket, store);
 
     return this;
   };
 
-  var loadEnemies = function(store) {
+  var loadEnemies = function(socket, store) {
     // TODO: this shouldn't be necessary?
     store.del('npcs', function(err, res) {});
 
@@ -56,6 +56,7 @@
           .exec(function(err, res) {
             // add npc to server object
             npcs[uuid] = npc;
+            socket.io.sockets.emit('npc:add', npc.getState());
           });
       })(i);
     }

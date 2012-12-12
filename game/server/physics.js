@@ -88,8 +88,7 @@
       // if no npcs left, reload
       if(Object.keys(game.levels.npcs).length < 1) {
         // TODO: break into single loadNPC events?
-        game.levels.loadEnemies(store);
-        socket.io.sockets.emit('npcs', game.levels.npcs);
+        game.levels.loadEnemies(socket, store);
       }
     }
   };
@@ -133,11 +132,15 @@
           // pipe valid commands directly to redis
           // passing a negative value to redis.incrby() decrements
           if (vx !== 0) {
-            store.hincrby('player:' + uid + ':ship', 'x', vx, function(err, res) {});
+            store.hincrby('player:' + uid + ':ship', 'x', vx, function(err, res) {
+              player.ship.x = res;
+            });
           }
 
-          if (vy !== 0) {d
-            store.hincrby('player:' + uid + ':ship', 'y', vy, function(err, res) {});
+          if (vy !== 0) {
+            store.hincrby('player:' + uid + ':ship', 'y', vy, function(err, res) {
+              player.ship.y = res;
+            });
           }
 
           if(move.input.spacebar) {

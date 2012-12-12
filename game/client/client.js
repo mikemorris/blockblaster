@@ -36,7 +36,6 @@
       // init players using data from server
       for (var i = 0; i < length; i++) {
         uid = players[i];
-        console.log(data[uid]);
         game.players[uid] = new game.Player(data[uid]);
       }
 
@@ -63,12 +62,10 @@
         game.npcs[uuid] = new game.Enemy(npc.x, npc.y, npc.direction);
       }
 
-      /*
       // bind add/remove listeners after init
-      socket.on('npcs:add', function(data) {
-        game.npcs[data.index] = new game.Enemy(data.enemy);
+      socket.on('npc:add', function(npc) {
+        game.npcs[npc.uuid] = new game.Enemy(npc.state.x, npc.state.y, npc.state.direction);
       });
-      */
 
       socket.on('npc:destroy', function(uuid) {
         // TODO: cleanup, remove from canvas
@@ -111,37 +108,50 @@
 
             // TODO: clean this up
             if (player.ship) {
-              client.ship.sx = parseInt(player.ship.state.x);
-              client.ship.sy = parseInt(player.ship.state.y);
 
-              // reconcile client prediction with server
-              if (uid === game.uid) {
-                client.ship.reconcile();
-              } else {
-                // queue server updates for entity interpolation
-                client.ship.queue.server.push(player);
-                
-                // splice array, keeping BUFFER_SIZE most recent items
-                if (client.ship.queue.server.length >= game.buffersize) {
-                  client.ship.queue.server.splice(-game.buffersize);
+              if (player.ship.state) {
+                if (player.ship.state.x) {
+                  client.ship.sx = parseInt(player.ship.state.x);
                 }
+
+                if (player.ship.state.y) {
+                  client.ship.sy = parseInt(player.ship.state.y);
+                }
+
+                // reconcile client prediction with server
+                if (uid === game.uid) {
+                  client.ship.reconcile();
+                } else {
+                  // queue server updates for entity interpolation
+                  client.ship.queue.server.push(player);
+                  
+                  // splice array, keeping BUFFER_SIZE most recent items
+                  if (client.ship.queue.server.length >= game.buffersize) {
+                    client.ship.queue.server.splice(-game.buffersize);
+                  }
+                }
+
               }
 
-              // update missiles
-              var missiles = player.ship.missiles;
-              var missile;
+              if (player.ship.missiles) {
 
-              for (var j = 0; j < missiles.length; j++) {
-                missile = missiles[j];
+                // update missiles
+                var missiles = player.ship.missiles;
+                var missile;
 
-                client.ship.missiles[j].sy = parseInt(missile.state.y);
-                client.ship.missiles[j].x = parseInt(missile.state.x);
-                client.ship.missiles[j].isLive = missile.state.isLive;
+                for (var j = 0; j < missiles.length; j++) {
+                  missile = missiles[j];
 
-                client.ship.missiles[j].queue.server.push(missile);
+                  client.ship.missiles[j].sy = parseInt(missile.state.y);
+                  client.ship.missiles[j].x = parseInt(missile.state.x);
+
+                  client.ship.missiles[j].queue.server.push(missile);
+                }
+
               }
 
             }
+
           }
         }
 
@@ -251,10 +261,9 @@
       for (var i = missiles.length; i--;) {
         var missile = missiles[i];
 
-        if(missile.isLive) {
-          missile.interpolate();
-          missile.draw();
-        }
+        // TODO: fix missiles to update isLive properly
+        missile.interpolate();
+        missile.draw();
       }
     };
 

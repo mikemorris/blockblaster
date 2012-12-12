@@ -116,8 +116,11 @@
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (dx > 100) this.x = this.sx;
-    if (dy > 100) this.y = this.sy;
+    if (difference > 150) {
+      this.x = this.sx;
+      this.y = this.sy;
+      return;
+    }
 
     var x;
     var y;
@@ -125,7 +128,7 @@
     var target
     var current;
 
-    var count = game.queue.server.length - 1;
+    var count = this.queue.server.length - 1;
 
     var prev;
     var next;
@@ -157,15 +160,26 @@
     }
 
     // interpolated position
-    // TODO: jump to position if large delta
-    x = game.core.lerp(current.x, target.x, timePoint);
-    y = game.core.lerp(current.y, target.y, timePoint);
+    if (current.x && target.x) {
+      x = game.core.lerp(current.x, target.x, timePoint);
+      this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+    }
 
-    // apply smoothing
-    this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+    if (current.y && target.y) {
+      y = game.core.lerp(current.y, target.y, timePoint);
+      this.y = game.core.lerp(this.y, y, game.time.delta * game.smoothing);
+    }
+  };
 
-    // TODO: fix this bug, sy is sometimes NaN
-    // this.y = game.core.lerp(this.y, y, game.time.delta * game.smoothing);
+  Enemy.prototype.getState = function() {
+    return {
+      uuid: this.uuid,
+      state: {
+        x: this.x,
+        y: this.y,
+        direction: this.direction
+      }
+    };
   };
 
   return Enemy;
