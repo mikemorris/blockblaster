@@ -9,6 +9,7 @@
 })(this, function(redis, config) {
 
   var init = function() {
+
     // redis client config
     var port = config.redis.port;
     var host = config.redis.host;
@@ -20,9 +21,9 @@
     var store = redis.createClient(port, host);
 
     // redis auth
-    pub.auth(pass, function(err) {});
-    sub.auth(pass, function(err) {});
-    store.auth(pass, function(err) {});
+    pub.auth(pass, function(err) { if (err) throw err; });
+    sub.auth(pass, function(err) { if (err) throw err; });
+    store.auth(pass, function(err) { if (err) throw err; });
 
     return {
       pub: pub,

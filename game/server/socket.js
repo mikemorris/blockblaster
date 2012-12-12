@@ -25,6 +25,7 @@
     // socket.io config
     io.configure(function() {
       io.set('store', new RedisStore({
+        redis: redis,
         redisPub: channel.pub,
         redisSub: channel.sub,
         redisClient: channel.store
@@ -44,6 +45,7 @@
   };
 
   var listen = function(io) {
+
     // socket.io client event listeners
     io.sockets.on('connection', function(socket) {
       var player;
@@ -53,7 +55,7 @@
 
       // init redis client
       var rc = redis.createClient(config.redis.port, config.redis.host);
-      rc.auth(config.redis.pass, function(err) {});
+      rc.auth(config.redis.password, function(err) { if (err) throw err; });
 
       // check if user already exists
       // TODO: irrelevant without permanent id
@@ -96,6 +98,7 @@
       });
 
     });
+
   };
 
   // TODO: entity id for enemies?

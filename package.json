@@ -1,18 +1,20 @@
 {
-  "name": "redisgame",
+  "name": "blockblaster",
   "subdomain": "nclud",
   "scripts": {
     "start": "server.js"
   },
-  "version": "0.2.0-31",
+  "version": "0.2.0-33",
   "engines": {
     "node": "0.8.x"
   },
   "dependencies": {
     "socket.io": "0.9.x",
-    "node-static": "0.6.1",
-    "underscore": "1.3.x",
-    "redis": "0.7.x"
+    "node-static": "0.6.x",
+    "underscore": "1.4.x",
+    "async": "0.1.x",
+    "redis": "0.8.x",
+    "node-uuid": "1.4.x"
   },
   "analyze": true
 }
