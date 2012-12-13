@@ -110,7 +110,7 @@
 
     // entity interpolation smoothing factor
     // lower number is slower smoothing
-    game.smoothing = 25;
+    game.smoothing = 10;
   };
 
   var isCollision = function(a, b) {

@@ -30,6 +30,9 @@
     // interpolation queue
     this.queue = {};
     this.queue.server = [];
+
+    // interpolation target
+    this.server = {};
 	};
 
 	Ship.prototype = new game.Entity();
@@ -101,7 +104,7 @@
 
 	};
 
-  Ship.prototype.reconcile = function() {
+  Ship.prototype.reconcile = function(player) {
     // server reconciliation
     var dx = 0;
     var dy = 0;
@@ -109,9 +112,12 @@
     var vector;
     var length;
 
+    var then;
+
     // bind this inside filter to Ship
     // remove most recent processed move and all older moves from queue
     game.queue.input = game.queue.input.filter((function(el, index, array) {
+      if (el.seq == this.ack) then = el;
       return el.seq > this.ack;
     }).bind(this));
 
@@ -126,8 +132,23 @@
 
     // update client position with reconciled prediction
     // server position plus delta of unprocessed input
-    vx = this.speed * game.time.delta * dx;
-    this.x = this.sx + vx;
+
+    if (then) {
+      var latency = (Date.now() - then.time);
+      // console.log('latency', latency);
+
+      var smoothing = (1 / latency) * 1000;
+      // console.log('smoothing', smoothing);
+
+      vx = this.speed * game.time.delta * dx;
+
+      // reconciled position
+      x = this.sx + vx;
+
+      // apply smoothing
+      this.x = game.core.lerp(this.x, x, game.time.delta * smoothing);
+    }
+
   };
 
   Ship.prototype.interpolate = function() {
@@ -138,7 +159,10 @@
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (difference > 150) this.x = this.sx;
+    if (difference > 200) {
+      this.x = this.sx;
+      return;
+    }
 
     var x;
     var vx;
@@ -146,7 +170,7 @@
     var target
     var current;
 
-    var count = game.queue.server.length - 1;
+    var count = this.queue.server.length - 1;
 
     var prev;
     var next;

@@ -86,6 +86,13 @@
 
     var delta = {};
 
+    // acknowledge most recent processed command and clear array
+    // TODO: get ack from redis???
+    if (player.processed.length) {
+      delta.ack = _.max(player.processed);
+      player.processed = [];
+    }
+
     // TODO: DRY THIS UP!!!
     // defer to redis for absolute state, delta compression
     store.hgetall('player:' + uid, function(err, res) {
@@ -162,11 +169,12 @@
         if (missiles) {
           delta.ship = delta.ship || {};
           delta.ship.missiles = missiles;
-          console.log(delta.ship.missiles);
+          // console.log(delta.ship.missiles);
         }
 
         // set changed values in data object
         if (Object.keys(delta).length) {
+          delta.time = Date.now();
           data.players[uid] = delta;
         }
 
@@ -208,7 +216,7 @@
       }
 
       // set changed values in data object
-      if (delta.length > 0) {
+      if (delta.length) {
         data.npcs[uuid] = _.pick(next, delta);
       }
 
@@ -222,9 +230,9 @@
   var update = function(socket, data) {
 
     // server time stamp
-    data.time = game.time.now;
+    data.time = Date.now();
 
-    // console.log(data);
+    console.log(data);
 
     /*
     var keys = Object.keys(data.players);
@@ -245,19 +253,11 @@
 
   var loop = function(socket, store) {
 
-    var physics = game.physics;
-
     // create data object containing
     // authoritative state and last processed input id
     var data = {};
     data.players = {};
     data.npcs = {};
-
-    // acknowledge most recent processed command and clear array
-    if (physics.processed.length) {
-      data.ack = _.max(physics.processed);
-      physics.processed = [];
-    }
 
     // get updated states from redis, then return delta object to client
     async.parallel([

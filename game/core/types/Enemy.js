@@ -116,7 +116,8 @@
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (difference > 150) {
+    if (difference > 200) {
+      console.log(difference);
       this.x = this.sx;
       this.y = this.sy;
       return;

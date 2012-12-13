@@ -18,11 +18,7 @@
 
   // constructor
 	var Player = function(player) {
-		this.ship = new game.Ship({
-      speed: 300,
-      maxMissiles: 3,
-      repeatRate: 30
-    });
+		this.ship = new game.Ship();
 
     // init from existing state
     if (player) {

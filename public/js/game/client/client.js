@@ -79,7 +79,8 @@
       game.uid = data;
 
       socket.on('state:update', function(data) {
-        // update server time
+
+        // update server time (used for entity interpolation)
         game.time.server = data.time;
         game.time.client = game.time.server - game.offset;
 
@@ -102,14 +103,16 @@
             client = game.players[uid];
 
             // update last acknowledged input
-            if (data.ack) {
-              client.ship.ack = data.ack;
+            if (player.ack) {
+              client.ship.ack = player.ack;
             }
 
             // TODO: clean this up
-            if (player.ship) {
+            if (client && player.ship) {
 
               if (player.ship.state) {
+
+                // set server state
                 if (player.ship.state.x) {
                   client.ship.sx = parseInt(player.ship.state.x);
                 }
@@ -118,16 +121,29 @@
                   client.ship.sy = parseInt(player.ship.state.y);
                 }
 
-                // reconcile client prediction with server
                 if (uid === game.uid) {
-                  client.ship.reconcile();
+
+                  // set smoothing coefficient
+                  player.smoothing = 1000;
+
+                  // reconcile client prediction with server
+                  client.ship.reconcile(player);
+
                 } else {
+
+                  // set interpolation targets
+                  client.ship.server.x = client.ship.sx;
+                  client.ship.server.y = client.ship.sy;
+
+                  // set smoothing coefficient
+                  player.smoothing = game.smoothing;
+
                   // queue server updates for entity interpolation
                   client.ship.queue.server.push(player);
                   
                   // splice array, keeping BUFFER_SIZE most recent items
                   if (client.ship.queue.server.length >= game.buffersize) {
-                    client.ship.queue.server.splice(-game.buffersize);
+                    client.ship.queue.server.splice(0, client.ship.queue.server.length - game.buffersize);
                   }
                 }
 
@@ -275,6 +291,7 @@
       if (uid === game.uid) {
         player.ship.respondToInput();
         player.ship.move();
+        player.ship.interpolate();
       } else {
         // interpolate position of other players
         player.ship.interpolate();
