@@ -232,7 +232,7 @@
     // server time stamp
     data.time = Date.now();
 
-    console.log(data);
+    // console.log(data);
 
     /*
     var keys = Object.keys(data.players);
