@@ -50,9 +50,6 @@
     io.sockets.on('connection', function(socket) {
       var player;
 
-      // clearCanvas for reconnecting players
-      io.sockets.socket(socket.id).emit('clearCanvas');
-
       // switch from socketid to Connect sessions?
       // TODO: use permanent id if available (facebook/twitter user id, etc)
       var id = socket.id;

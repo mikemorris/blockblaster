@@ -27,14 +27,13 @@
 
     var socket = game.socket = io.connect();
 
-    socket.on('clearCanvas', function(data) {
-      game.client.clearCanvas();
-    });
-
     socket.on('players', function(data) {
       var players = Object.keys(data);
       var length = players.length;
       var uid;
+
+      // wipe old data from game.players
+      game.players = {};
 
       // init players using data from server
       for (var i = 0; i < length; i++) {
@@ -57,6 +56,9 @@
       var length = npcs.length;
       var uuid;
       var npc;
+
+      // wipe old data from game.npcs
+      game.npcs = {};
 
       // init NPCs using data from server
       for (var i = 0; i < length; i++) {
