@@ -7,12 +7,11 @@
     define(factory);
   } else {
     // browser globals (root is window)
-    root.GAME = root.GAME || {};
     root.GAME.client = factory(root.GAME || {});
   }
 })(this, function(game) {
 
-  this.init = function() {
+  var init = function() {
 
     // clear players object to purge disconnected ghosts
     game.players = {};
@@ -225,20 +224,20 @@
     */
   };
 
-  this.loop = function() {
-    this.animationFrame = window.requestAnimationFrame(this.loop);
-    game.time.setDelta();
+  var loop = function() {
+    // game.client necessary because of scope change on successive calls
+    game.client.animationFrame = window.requestAnimationFrame(game.client.loop);
 
-    // defined in scene
-    this.runFrameActions();
+    game.time.setDelta();
+    game.client.runFrameActions();
   };
 
-  this.pause = function() {
+  var pause = function() {
     window.cancelAnimationFrame(this.animationFrame);
     this.areRunning = false;
   };
 
-  this.play = function() {
+  var play = function() {
     if(!this.areRunning) {
       this.then = Date.now();
 
@@ -249,17 +248,17 @@
     }
   };
 
-  this.runFrameActions = function() {
+  var runFrameActions = function() {
     for (var i = 0; i < this.actions.length; i++) {
       this.actions[i]();
     }
   };
 
-  this.clearCanvas = function() {
+  var clearCanvas = function() {
     game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
   };
 
-  this.createCanvas = function(width, height) {
+  var createCanvas = function(width, height) {
     game.canvas = document.createElement('canvas');
     game.ctx = game.canvas.getContext('2d');
     game.canvas.width = width;
@@ -267,7 +266,7 @@
     document.getElementById('canvas-wrapper').appendChild(game.canvas);
   };
 
-  this.updatePlayers = function() {
+  var updatePlayers = function() {
     var players = Object.keys(game.players);
     var length = players.length;
     var uid;
@@ -303,7 +302,7 @@
     }
   };
 
-  this.updateNPCs = function() {
+  var updateNPCs = function() {
     var npcs = Object.keys(game.npcs);
     var length = npcs.length;
     var uuid;
@@ -319,6 +318,16 @@
     }
   };
 
-  return this;
+  return {
+    init: init,
+    loop: loop,
+    pause: pause,
+    play: play,
+    runFrameActions: runFrameActions,
+    clearCanvas: clearCanvas,
+    createCanvas: createCanvas,
+    updatePlayers: updatePlayers,
+    updateNPCs: updateNPCs
+  };
 
 });
