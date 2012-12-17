@@ -117,6 +117,7 @@
 
     // snap if large difference
     if (difference > 200) {
+      // TODO: how is it that NPCs are drifting out to x = 80000?
       console.log(difference);
       this.x = this.sx;
       this.y = this.sy;

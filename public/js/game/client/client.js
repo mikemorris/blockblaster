@@ -27,6 +27,10 @@
 
     var socket = game.socket = io.connect();
 
+    socket.on('clearCanvas', function(data) {
+      game.client.clearCanvas();
+    });
+
     socket.on('players', function(data) {
       var players = Object.keys(data);
       var length = players.length;
