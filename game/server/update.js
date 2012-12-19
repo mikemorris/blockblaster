@@ -124,9 +124,6 @@
       if (deltaKeys.length > 0) {
         delta.state = _.pick(next, deltaKeys);
       }
-
-      // only expire socket or browser session clients
-      store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
       
       store.hgetall('player:' + uuid + ':ship', function(err, res) {
 
@@ -180,6 +177,9 @@
           delta.time = Date.now();
           data.players[uuid] = delta;
         }
+
+        // only expire socket or browser session clients
+        store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
       
         // notify async that iterator has completed
         if (typeof callback === 'function') callback();
