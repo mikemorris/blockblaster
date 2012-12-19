@@ -67,8 +67,13 @@
           anyDestroyed = true;
           delete game.levels.npcs[uuid];
 
-          // TODO: flag enemy as destroyed in redis
-          // store.set('npc:' + i + ':x', npc.x, function(err, res) {});
+          store.multi()
+            .srem('npc', uuid)
+            .del('npc:' + uuid)
+            .zrem('expire', 'npc+' + uuid)
+            .exec(function(err, res) {
+              socket.io.sockets.emit('npc:destroy', uuid);
+            });
         } else {
           npc.move(store, function(uuid, delta) {
             var keys = Object.keys(delta);
@@ -82,15 +87,6 @@
           });
         }
       })(i);
-    }
-
-    // TODO: check NPCs in redis
-    if(anyDestroyed) {
-      // if no npcs left, reload
-      if(Object.keys(game.levels.npcs).length < 1) {
-        // TODO: break into single loadNPC events?
-        game.levels.loadEnemies(socket, store);
-      }
     }
   };
 

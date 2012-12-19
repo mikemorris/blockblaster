@@ -33,11 +33,6 @@
       }));
     });
 
-    // TODO: scale this correctly to only remove players from offline servers
-    // delete active player and NPC set
-    // remove players who were still connected when server shut down
-    channel.store.del('players', function(err, res) {});
-
     this.listen(io);
 
     return {
@@ -103,22 +98,21 @@
       .on('disconnect', function() {
         var uuid = socket.uuid;
 
-        // remove player from redis set (only if session client)
+        // remove player and ship from redis set (only if session client)
         // TODO: save if permanent login
-        rc.srem('players', uuid, function(err, res) {
-
-          // delete player and ship from redis
-          rc.del('player:' + uuid, 'player:' + uuid + ':ship', function(err, res) {
+        rc.multi()
+          .srem('player', uuid)
+          .del('player:' + uuid, 'player:' + uuid + ':ship')
+          .exec(function(err, res) {
             // close redis client
             rc.quit();
 
             // remove player from server
             delete game.levels.players[uuid];
 
+            // emit player:destroy event to client
             io.sockets.emit('players:remove', uuid);
           });
-
-        });
 
       });
 
@@ -142,6 +136,7 @@
     io.sockets.emit('players:add', data);
 
     var players = {};
+
     var keys = Object.keys(game.levels.players);
     var key;
     var player;
@@ -168,7 +163,7 @@
 
     // add player to redis set
     // and init npc redis state hash
-    rc.sadd('players', socket.uuid, function(err, res) {
+    rc.sadd('player', socket.uuid, function(err, res) {
 
       // check previous state for returning players
       rc.hgetall('player:' + socket.uuid + ':ship', function(err, res) {

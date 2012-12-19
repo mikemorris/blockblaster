@@ -8,7 +8,9 @@ var socket = require('./game/server/socket').init(app, channel);
 
 // load scene
 // GAME.core.loadScene('levels').loadLevel(1);
-var levels = require('./game/server/levels.js').init(socket, channel.store);
+
+// init expire loop
+var expire = require('./game/server/expire.js').init(socket, channel.store);
 
 // TODO: init server loops inside levels?
 // require server loops

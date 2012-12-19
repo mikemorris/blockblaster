@@ -27,7 +27,7 @@
 
   var updatePlayers = function(store, data, callback) {
 
-    store.smembers('players', function(err, res) {
+    store.smembers('player', function(err, res) {
       var players = res;
       var length = players.length;
 
@@ -56,7 +56,7 @@
 
     // iterate over all npcs in redis
     // TODO: should this just iterate over server NPCs instead?
-    store.smembers('npcs', function(err, res) {
+    store.smembers('npc', function(err, res) {
       var npcs = res;
       var length = npcs.length;
 
@@ -126,7 +126,7 @@
       }
 
       // only expire socket or browser session clients
-      store.expire('player:' + uuid, 20, function(err, res) {});
+      store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
       
       store.hgetall('player:' + uuid + ':ship', function(err, res) {
 
@@ -180,9 +180,6 @@
           delta.time = Date.now();
           data.players[uuid] = delta;
         }
-
-        // only expire socket or browser session clients
-        store.expire('player:' + uuid + ':ship', 20, function(err, res) {});
       
         // notify async that iterator has completed
         if (typeof callback === 'function') callback();
@@ -227,8 +224,7 @@
       }
 
       // expire all NPCs to clean redis on server crash
-      store.expire('npc:' + uuid, 20, function(err, res) {});
-      store.expire('npcs', uuid, 20, function(err, res) {});
+      store.zadd('expire', Date.now(), 'npc+' + uuid, function(err, res) {});
 
       // notify async.forEach in updateNPCs that function has completed
       if (typeof callback === 'function') callback();
