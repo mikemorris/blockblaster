@@ -36,7 +36,7 @@
         set = target[0];
         member = target[1];
 
-        console.log('EXPIRE', set, member);
+        // console.log('EXPIRE', set, member);
 
         store.multi()
           .srem(set, member)
