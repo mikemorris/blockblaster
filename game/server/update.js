@@ -33,12 +33,12 @@
 
       async.forEach(
         players,
-        function(uid, callback) {
+        function(uuid, callback) {
           // only publish updates for players originating from this server
-          var player = game.levels.players[uid];
+          var player = game.levels.players[uuid];
 
           if (player) {
-            updatePlayer(store, data, uid, player, callback);
+            updatePlayer(store, data, uuid, player, callback);
           } else {
             // notify async.forEach that function has completed
             if (typeof callback === 'function') callback();
@@ -82,7 +82,7 @@
 
   };
 
-  var updatePlayer = function(store, data, uid, player, callback) {
+  var updatePlayer = function(store, data, uuid, player, callback) {
 
     var delta = {};
 
@@ -95,7 +95,7 @@
 
     // TODO: DRY THIS UP!!!
     // defer to redis for absolute state, delta compression
-    store.hgetall('player:' + uid, function(err, res) {
+    store.hgetall('player:' + uuid, function(err, res) {
 
       // save reference to old values and update state
       var prev = player.state;
@@ -125,7 +125,10 @@
         delta.state = _.pick(next, deltaKeys);
       }
 
-      store.hgetall('player:' + uid + ':ship', function(err, res) {
+      // only expire socket or browser session clients
+      store.expire('player:' + uuid, 20, function(err, res) {});
+      
+      store.hgetall('player:' + uuid + ':ship', function(err, res) {
 
         // save reference to old values and update state
         var prev = player.ship.state;
@@ -175,9 +178,12 @@
         // set changed values in data object
         if (Object.keys(delta).length) {
           delta.time = Date.now();
-          data.players[uid] = delta;
+          data.players[uuid] = delta;
         }
 
+        // only expire socket or browser session clients
+        store.expire('player:' + uuid + ':ship', 20, function(err, res) {});
+      
         // notify async that iterator has completed
         if (typeof callback === 'function') callback();
         
@@ -219,6 +225,10 @@
       if (delta.length) {
         data.npcs[uuid] = _.pick(next, delta);
       }
+
+      // expire all NPCs to clean redis on server crash
+      store.expire('npc:' + uuid, 20, function(err, res) {});
+      store.expire('npcs', uuid, 20, function(err, res) {});
 
       // notify async.forEach in updateNPCs that function has completed
       if (typeof callback === 'function') callback();

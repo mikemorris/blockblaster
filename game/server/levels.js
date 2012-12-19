@@ -11,13 +11,30 @@
   var npcs = {};
 
   var init = function(socket, store) {
-    this.loadEnemies(socket, store);
+    // only init enemies if none exist in redis
+    store.scard('npcs', (function(err, res) {
+      console.log(res);
+      if (!res) {
+        this.loadEnemies(socket, store);
+      }
+    }).bind(this));
 
     return this;
   };
 
   var loadEnemies = function(socket, store) {
-    // TODO: this shouldn't be necessary?
+    // purge NPCs from redis
+    store.smembers('npcs', function(err, res) {
+      var npcs = res;
+      var length = npcs.length;
+
+      // iterate and purge!
+      for (var i = 0; i < length; i++) {
+        store.del('npc:' + npcs[i], function(err, res) {});
+      }
+    });
+
+    // clean out active array
     store.del('npcs', function(err, res) {});
 
     var enemies = [

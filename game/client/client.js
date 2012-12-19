@@ -30,24 +30,24 @@
     socket.on('players', function(data) {
       var players = Object.keys(data);
       var length = players.length;
-      var uid;
+      var uuid;
 
       // wipe old data from game.players
       game.players = {};
 
       // init players using data from server
       for (var i = 0; i < length; i++) {
-        uid = players[i];
-        game.players[uid] = new game.Player(data[uid]);
+        uuid = players[i];
+        game.players[uuid] = new game.Player(data[uuid]);
       }
 
       // bind add/remove listeners after init
       socket.on('players:add', function(data) {
-        game.players[data.uid] = new game.Player(data.player);
+        game.players[data.uuid] = new game.Player(data.player);
       });
 
-      socket.on('players:remove', function(uid) {
-        delete game.players[uid];
+      socket.on('players:remove', function(uuid) {
+        delete game.players[uuid];
       });
     });
 
@@ -80,8 +80,8 @@
     });
 
     // set socket.uid before processing updates
-    socket.on('uid', function(data) {
-      game.uid = data;
+    socket.on('uuid', function(data) {
+      game.uuid = data;
 
       socket.on('state:update', function(data) {
 
@@ -93,7 +93,7 @@
         var players = Object.keys(data.players);
         var length = players.length;
 
-        var uid;
+        var uuid;
         var player;
         var client;
 
@@ -101,11 +101,11 @@
         if (length) {
 
           for (var i = 0; i < length; i++) {
-            uid = players[i];
-            player = data.players[uid];
+            uuid = players[i];
+            player = data.players[uuid];
 
             // authoritatively set internal state if player exists on client
-            client = game.players[uid];
+            client = game.players[uuid];
 
             // update last acknowledged input
             if (player.ack) {
@@ -126,7 +126,7 @@
                   client.ship.sy = parseInt(player.ship.state.y);
                 }
 
-                if (uid === game.uid) {
+                if (uuid === game.uuid) {
 
                   // set smoothing coefficient
                   player.smoothing = 1000;
@@ -275,7 +275,7 @@
   var updatePlayers = function() {
     var players = Object.keys(game.players);
     var length = players.length;
-    var uid;
+    var uuid;
     var player;
 
     var updateMissiles = function(missiles) {
@@ -289,11 +289,11 @@
     };
 
     for (var i = 0; i < length; i++) {
-      uid = players[i];
-      player = game.players[uid];
+      uuid = players[i];
+      player = game.players[uuid];
 
       // client prediction only for active player
-      if (uid === game.uid) {
+      if (uuid === game.uuid) {
         player.ship.respondToInput();
         player.ship.move();
         player.ship.interpolate();

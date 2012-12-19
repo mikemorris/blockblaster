@@ -84,6 +84,7 @@
       })(i);
     }
 
+    // TODO: check NPCs in redis
     if(anyDestroyed) {
       // if no npcs left, reload
       if(Object.keys(game.levels.npcs).length < 1) {
@@ -104,20 +105,20 @@
     // TODO: process input inside player loop
     var players = Object.keys(game.levels.players);
     var length = players.length;
-    var uid;
+    var uuid;
     var player;
 
     // set position authoritatively for all players
     for (var i = 0; i < length; i++) {
-      uid = players[i];
-      player = game.levels.players[uid];
+      uuid = players[i];
+      player = game.levels.players[uuid];
 
       this.updateMissiles(player.ship.missiles);
 
       // no input to process
       if (!player.queue.length) continue;
 
-      (function iterate(player, uid, move) {
+      (function iterate(player, uuid, move) {
         process.nextTick(function() {
           var vector;
           var vx;
@@ -132,13 +133,13 @@
           // pipe valid commands directly to redis
           // passing a negative value to redis.incrby() decrements
           if (vx !== 0) {
-            store.hincrby('player:' + uid + ':ship', 'x', vx, function(err, res) {
+            store.hincrby('player:' + uuid + ':ship', 'x', vx, function(err, res) {
               player.ship.x = res;
             });
           }
 
           if (vy !== 0) {
-            store.hincrby('player:' + uid + ':ship', 'y', vy, function(err, res) {
+            store.hincrby('player:' + uuid + ':ship', 'y', vy, function(err, res) {
               player.ship.y = res;
             });
           }
@@ -155,9 +156,9 @@
 
           // if queue empty, stop looping
           if (!player.queue.length) return;
-          iterate(player, uid, player.queue.shift());
+          iterate(player, uuid, player.queue.shift());
         });
-      })(player, uid, player.queue.shift());
+      })(player, uuid, player.queue.shift());
     }
 
   }

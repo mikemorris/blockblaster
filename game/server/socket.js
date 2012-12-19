@@ -10,10 +10,11 @@
       require('async'),
       require('redis'),
       require('socket.io'),
+      require('node-uuid'),
       require('../../config')
     );
   }
-})(this, function(game, async, redis, sio, config) {
+})(this, function(game, async, redis, sio, uuid, config) {
 
   var init = function(app, channel) {
     var RedisStore = sio.RedisStore;
@@ -52,64 +53,87 @@
 
       // switch from socketid to Connect sessions?
       // TODO: use permanent id if available (facebook/twitter user id, etc)
-      var id = socket.id;
+      var id;
 
       // init redis client
       var rc = redis.createClient(config.redis.port, config.redis.host);
       rc.auth(config.redis.password, function(err) { if (err) throw err; });
 
       // check if user already exists
-      // TODO: irrelevant without permanent id
-      rc.get('uid:' + id, function(err, res) {
-        if (err) { throw err; }
+      // TODO: only set for permanent id, break out into function
+      // accepting facebook or twitter logins
+      if (id) {
+        rc.get('uid:' + id, function(err, res) {
+          if (err) { throw err; }
 
-        if (res !== null) {
-          rc.get('player:' + res, function(err, uid) {
-            initPlayer(io, socket, rc, uid);
-          });
-        } else {
-          rc.incr('players:uid:next', function(err, uid) {
+          if (res !== null) {
+            rc.get('player:' + res, function(err, res) {
+              // get uuid
+              socket.uuid = res;
+
+              initPlayer(io, socket, rc);
+            });
+          } else {
+            // set uuid
+            socket.uuid = uuid.v4();
+
+            // init player in redis
             rc.multi()
-              .set('player:' + uid, id)
-              .set('uid:' + id, uid)
+              .set('player:' + socket.uuid, id)
+              .set('uid:' + id, socket.uuid)
               .exec(function(err, res) {
-                initPlayer(io, socket, rc, uid);
+                initPlayer(io, socket, rc);
               });
-          });
-        }
-      });
+          }
+        });
+      } else {
+        // set uuid
+        socket.uuid = uuid.v4();
+
+        // init session player in redis
+        rc.set('player:' + socket.uuid, socket.id, function(err, res) {
+          initPlayer(io, socket, rc);
+        });
+      }
 
       socket.on('command:send', function (command) {
         // add to server physics queue instead of immeadiately publishing
-        game.levels.players[socket.uid].queue.push(command);
+        game.levels.players[socket.uuid].queue.push(command);
       })
       .on('disconnect', function() {
-        var uid = socket.uid;
+        var uuid = socket.uuid;
 
-        // remove player from redis set
-        rc.srem('players', uid, function(err, res) {
-          // close redis client
-          rc.quit();
+        // remove player from redis set (only if session client)
+        // TODO: save if permanent login
+        rc.srem('players', uuid, function(err, res) {
 
-          // remove player from server
-          delete game.levels.players[uid];
+          // delete player and ship from redis
+          rc.del('player:' + uuid, 'player:' + uuid + ':ship', function(err, res) {
+            // close redis client
+            rc.quit();
 
-          io.sockets.emit('players:remove', uid);
+            // remove player from server
+            delete game.levels.players[uuid];
+
+            io.sockets.emit('players:remove', uuid);
+          });
+
         });
+
       });
 
     });
 
   };
 
-  var addPlayer = function(io, socket, rc, uid, player) {
+  var addPlayer = function(io, socket, rc, player) {
 
     // add player to server object
-    game.levels.players[uid] = player;
+    game.levels.players[socket.uuid] = player;
 
     // init data object and attach player uid
     var data = {};
-    data.uid = uid;
+    data.uuid = socket.uuid;
 
     // init player
     data.player = player.getState();
@@ -134,40 +158,37 @@
 
   };
 
-  var initPlayer = function(io, socket, rc, uid) {
+  var initPlayer = function(io, socket, rc) {
 
     // init player
     var player = new game.Player();
-
-    // store uid in the socket session for this client
-    socket.uid = uid;
     
-    // send uid to client
-    io.sockets.socket(socket.id).emit('uid', uid.toString());
+    // send uuid to client
+    io.sockets.socket(socket.id).emit('uuid', socket.uuid.toString());
 
     // add player to redis set
     // and init npc redis state hash
-    rc.sadd('players', uid, function(err, res) {
+    rc.sadd('players', socket.uuid, function(err, res) {
 
       // check previous state for returning players
-      rc.hgetall('player:' + uid + ':ship', function(err, res) {
+      rc.hgetall('player:' + socket.uuid + ':ship', function(err, res) {
 
         if (res === null) {
           // init state if not in redis already
           rc.hmset(
-            'player:' + uid + ':ship', 
+            'player:' + socket.uuid + ':ship', 
             'x', player.ship.x,
             'y', player.ship.y,
             'speed', player.ship.speed,
             'vx', player.ship.vx,
             function(err, res) {
-              addPlayer(io, socket, rc, uid, player);
+              addPlayer(io, socket, rc, player);
             }
           );
         } else {
           // otherwise, set state from redis
           player.ship.state = res;
-          addPlayer(io, socket, rc, uid, player);
+          addPlayer(io, socket, rc, player);
         }
       });
 
