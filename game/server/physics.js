@@ -129,13 +129,13 @@
           // pipe valid commands directly to redis
           // passing a negative value to redis.incrby() decrements
           if (vx !== 0) {
-            store.hincrby('player:' + uuid + ':ship', 'x', vx, function(err, res) {
+            store.hincrby('ship:' + player.ship.uuid, 'x', vx, function(err, res) {
               player.ship.x = res;
             });
           }
 
           if (vy !== 0) {
-            store.hincrby('player:' + uuid + ':ship', 'y', vy, function(err, res) {
+            store.hincrby('ship:' + player.ship.uuid, 'y', vy, function(err, res) {
               player.ship.y = res;
             });
           }

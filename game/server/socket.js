@@ -58,6 +58,10 @@
       // TODO: only set for permanent id, break out into function
       // accepting facebook or twitter logins
       if (id) {
+        // TODO: break out getPlayer function to get existing player
+        // TODO: rc.get('facebook:' + FBid, function(err, res) {});
+        // TODO: rc.get('twitter:' + twitterID, function(err, res) {});
+        /*
         rc.get('uid:' + id, function(err, res) {
           if (err) { throw err; }
 
@@ -81,14 +85,17 @@
               });
           }
         });
+        */
       } else {
         // set uuid
         socket.uuid = uuid.v4();
+        initPlayer(io, socket, rc);
 
         // init session player in redis
+        /*
         rc.set('player:' + socket.uuid, socket.id, function(err, res) {
-          initPlayer(io, socket, rc);
         });
+        */
       }
 
       socket.on('command:send', function (command) {
@@ -102,16 +109,22 @@
         // TODO: save if permanent login
         rc.multi()
           .srem('player', uuid)
-          .del('player:' + uuid, 'player:' + uuid + ':ship')
+          .del('player:' + uuid)
           .exec(function(err, res) {
-            // close redis client
-            rc.quit();
 
-            // remove player from server
-            delete game.levels.players[uuid];
+            destroyChildren(rc, uuid, function() {
 
-            // emit player:destroy event to client
-            io.sockets.emit('players:remove', uuid);
+              // close redis client
+              rc.quit();
+
+              // remove player from server
+              delete game.levels.players[uuid];
+
+              // emit player:destroy event to client
+              io.sockets.emit('players:remove', uuid);
+              
+            });
+
           });
 
       });
@@ -162,29 +175,138 @@
     io.sockets.socket(socket.id).emit('uuid', socket.uuid.toString());
 
     // add player to redis set
-    // and init npc redis state hash
     rc.sadd('player', socket.uuid, function(err, res) {
 
-      // check previous state for returning players
-      rc.hgetall('player:' + socket.uuid + ':ship', function(err, res) {
-
-        if (res === null) {
-          // init state if not in redis already
-          rc.hmset(
-            'player:' + socket.uuid + ':ship', 
-            'x', player.ship.x,
-            'y', player.ship.y,
-            'speed', player.ship.speed,
-            'vx', player.ship.vx,
-            function(err, res) {
-              addPlayer(io, socket, rc, player);
-            }
-          );
-        } else {
-          // otherwise, set state from redis
-          player.ship.state = res;
+      // init state if not in redis already
+      rc.multi()
+        .hset('parent', 'ship+' + player.ship.uuid, 'player+' + socket.uuid)
+        .hmset('ship:' + player.ship.uuid, 
+          'x', player.ship.x,
+          'y', player.ship.y,
+          'speed', player.ship.speed,
+          'vx', player.ship.vx
+        )
+        .exec(function(err, res) {
           addPlayer(io, socket, rc, player);
+        });
+
+    });
+
+  };
+
+  var destroyChildren = function(rc, id, callback) {
+    rc.hgetall('parent', function(err, res) {
+      if (res) {
+        var children = res;
+        var keys = Object.keys(children);
+        var child;
+
+        async.forEach(
+          keys,
+          function(key, callback) {
+
+            if (children[key].split('+')[1] === id) {
+
+              var child = key.split('+');
+              var childSet = child[0];
+              var childKey = child[1];
+
+              // delete reference from hash
+              // delete set:key from redis
+              rc.multi()
+                .hdel('parent', key)
+                .del(childSet + ':' + childKey)
+                .exec(function(err, res) {
+                  destroyChildren(rc, key, callback);
+                });
+              
+            } else {
+              // notify async.forEach that recursion has completed
+              if (typeof callback === 'function') callback();
+            }
+
+          },
+          function() {
+            // notify async.forEach that recursion has completed
+            if (typeof callback === 'function') callback();
+          }
+        );
+      } else {
+        // notify getChildren that recursion has completed
+        if (typeof callback === 'function') callback();
+      }
+    });
+  };
+
+  // TODO: possible to make this recursive instead of explicit?
+  var getPlayer = function(io, socket, rc) {
+
+    // init player
+    var player = new game.Player();
+    
+    // send uuid to client
+    io.sockets.socket(socket.id).emit('uuid', socket.uuid.toString());
+
+    // add player to redis set
+    rc.sadd('player', socket.uuid, function(err, res) {
+
+      rc.hgetall('parent', function(err, res) {
+        var ships = res;
+        var keys = Object.keys(ships);
+        var length = keys.length;
+        var key;
+
+        for (var i = 0; i < length; i++) {
+          key = keys[i];
+
+          if (ships[key] === socket.uuid) {
+
+            // set ship uuid
+            player.ship.uuid = key;
+
+            // get ship from redis
+            rc.hgetall('ship:' + key, function(err, res) {
+
+              player.ship.state = res;
+
+              rc.hgetall('parent', function(err, res) {
+                var missiles = res;
+                var keys = Object.keys(missiles);
+                var length = keys.length;
+                var key;
+
+                async.forEach(
+                  keys,
+                  function(key, callback) {
+                    if (missiles[key] === player.ship.uuid) {
+
+                      // get ship from redis
+                      rc.hgetall('missile:' + key, function(err, res) {
+                        var missile = res;
+
+                        // set missile uuid
+                        player.ship.missiles[missile.index].uuid = key;
+                        player.ship.missiles[missile.index].state = missile;
+
+                        // notify async.forEach that function has completed
+                        if (typeof callback === 'function') callback();
+                      });
+                      
+                    }
+                  },
+                  function() {
+                    addPlayer(io, socket, rc, player);
+                  }
+                );
+
+              });
+
+            });
+            
+          }
+
         }
+
       });
 
     });

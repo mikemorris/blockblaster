@@ -37,11 +37,11 @@
         member = target[1];
 
         // console.log('EXPIRE', set, member);
+        // TODO: recursively delete all keys on set:member
 
         store.multi()
           .srem(set, member)
           .del(set + ':' + member)
-          .del(set + ':' + member + ':ship')
           .zrem('expire', item)
           .exec(function(err, res) {});
       }

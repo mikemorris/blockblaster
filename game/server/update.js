@@ -125,7 +125,7 @@
         delta.state = _.pick(next, deltaKeys);
       }
       
-      store.hgetall('player:' + uuid + ':ship', function(err, res) {
+      store.hgetall('ship:' + player.ship.uuid, function(err, res) {
 
         // save reference to old values and update state
         var prev = player.ship.state;
