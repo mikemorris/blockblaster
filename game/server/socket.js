@@ -174,23 +174,57 @@
     // send uuid to client
     io.sockets.socket(socket.id).emit('uuid', socket.uuid.toString());
 
-    // add player to redis set
-    rc.sadd('player', socket.uuid, function(err, res) {
+    async.parallel(
+      [
+        function(callback) {
+          // add player to redis set
+          // init player state in redis
+          rc.multi()
+            .sadd('player', socket.uuid)
+            .hset('parent', 'ship+' + player.ship.uuid, 'player+' + socket.uuid)
+            .hmset('ship:' + player.ship.uuid, 
+              'x', player.ship.x,
+              'y', player.ship.y,
+              'speed', player.ship.speed
+            )
+            .exec(function(err, res) {
+              // notify async.parallel that recursion has completed
+              if (typeof callback === 'function') callback();
+            });
+        },
+        function(callback) {
+          var missiles = player.ship.missiles;
 
-      // init state if not in redis already
-      rc.multi()
-        .hset('parent', 'ship+' + player.ship.uuid, 'player+' + socket.uuid)
-        .hmset('ship:' + player.ship.uuid, 
-          'x', player.ship.x,
-          'y', player.ship.y,
-          'speed', player.ship.speed,
-          'vx', player.ship.vx
-        )
-        .exec(function(err, res) {
-          addPlayer(io, socket, rc, player);
-        });
-
-    });
+          // init missiles
+          async.forEach(
+            missiles,
+            function(missile, callback) {
+              rc.multi()
+                .hset('parent', 'missile+' + missile.uuid, 'ship+' + player.ship.uuid)
+                .hmset('missile:' + missile.uuid,
+                  'x', missile.x,
+                  'y', missile.y,
+                  'speed', missile.speed,
+                  'vx', missile.vx
+                )
+                .exec(
+                  function(err, res) {
+                    // notify async.forEach that recursion has completed
+                    if (typeof callback === 'function') callback();
+                  }
+                );
+            },
+            function() {
+              // notify async.parallel that recursion has completed
+              if (typeof callback === 'function') callback();
+            }
+          );
+        }
+      ],
+      function() {
+        addPlayer(io, socket, rc, player);
+      }
+    );
 
   };
 
@@ -211,13 +245,15 @@
               var childSet = child[0];
               var childKey = child[1];
 
-              // delete reference from hash
-              // delete set:key from redis
+              // console.log(key);
+
+              // delete reference from hash and set:key from redis
+              // recursively destroy children
               rc.multi()
                 .hdel('parent', key)
                 .del(childSet + ':' + childKey)
                 .exec(function(err, res) {
-                  destroyChildren(rc, key, callback);
+                  destroyChildren(rc, childKey, callback);
                 });
               
             } else {
@@ -317,6 +353,7 @@
     listen: listen,
     addPlayer: addPlayer,
     initPlayer: initPlayer,
+    destroyChildren: destroyChildren,
     init: init
   };
 

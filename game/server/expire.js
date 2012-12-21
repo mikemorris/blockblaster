@@ -2,6 +2,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory({
+      'socket': require('./socket.js'),
       'levels': require('./levels.js')
     });
   }
@@ -26,7 +27,7 @@
       var target;
 
       var set;
-      var member;
+      var id;
 
       // iterate and purge!
       for (var i = 0; i < length; i++) {
@@ -34,16 +35,20 @@
         target = item.split('+');
 
         set = target[0];
-        member = target[1];
+        id = target[1];
 
-        // console.log('EXPIRE', set, member);
-        // TODO: recursively delete all keys on set:member
+        // console.log('EXPIRE', set, id);
 
-        store.multi()
-          .srem(set, member)
-          .del(set + ':' + member)
-          .zrem('expire', item)
-          .exec(function(err, res) {});
+        // recursively delete all keys on set:member
+        (function(set, id) {
+          store.multi()
+            .srem(set, id)
+            .del(set + ':' + id)
+            .zrem('expire', item)
+            .exec(function(err, res) {
+              game.socket.destroyChildren(store, id);
+            });
+        })(set, id);
       }
     });
 
