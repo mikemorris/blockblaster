@@ -206,7 +206,8 @@
                   'x', missile.x,
                   'y', missile.y,
                   'speed', missile.speed,
-                  'vy', missile.vy
+                  'vy', missile.vy,
+                  'isLive', missile.isLive
                 )
                 .exec(
                   function(err, res) {

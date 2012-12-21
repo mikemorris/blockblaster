@@ -36,7 +36,16 @@
         npc = game.levels.npcs[key];
 
         if(game.core.isCollision(npc, missile)) {
-          missile.explode();
+          missile.explode(store, function(uuid, delta) {
+            var keys = Object.keys(delta);
+            var length = keys.length;
+            var key;
+
+            for (var i = 0; i < length; i++) {
+              key = keys[i];
+              store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
+            }
+          });
           npc.destroy();
         }
       }
@@ -151,7 +160,16 @@
           }
 
           if(move.input.spacebar) {
-            player.ship.fire();
+            player.ship.fire(store, function(uuid, delta) {
+              var keys = Object.keys(delta);
+              var length = keys.length;
+              var key;
+
+              for (var i = 0; i < length; i++) {
+                key = keys[i];
+                store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
+              }
+            });
           } else {
             // TODO: no command with this state is being sent if ship is stationary
             player.ship.fireButtonReleased = true;

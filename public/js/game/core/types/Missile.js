@@ -42,21 +42,40 @@
 
 	Missile.prototype = new game.Rectangle();
 
-	Missile.prototype.explode = function() {
+	Missile.prototype.explode = function(store, callback) {
+
+    var delta = {};
+
 		this.vy = 0;
-		this.reload();
+    delta['y'] = this.y;
+
+		this.reload(store, callback);
+
+    if (typeof callback === 'function') callback(this.uuid, delta);
 	};
 
-	Missile.prototype.fire = function() {
+	Missile.prototype.fire = function(store, callback) {
+
+    var delta = {};
+
 		this.x = this.ship.x + this.ship.width / 2 - this.width / 2;
+    delta['x'] = this.x;
+
 		this.y = this.ship.y;
+    delta['y'] = this.y;
+
 		this.vy = this.speed;
+    delta['vy'] = this.vy;
 
     // switch missile to active state
 		this.isLive = true;
+    delta['isLive'] = this.isLive;
+
+    if (typeof callback === 'function') callback(this.uuid, delta);
+
 	};
 
-	Missile.prototype.move = function(direction) {
+	Missile.prototype.move = function(store, callback) {
 
     var delta = {};
 
@@ -65,19 +84,29 @@
 
     // reload if offscreen
 		if(this.y < (0 - this.height)) {
-			this.reload();
+			this.reload(store, callback);
 		}
 
     if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
-	Missile.prototype.reload = function() {
+	Missile.prototype.reload = function(store, callback) {
+
+    var delta = {};
+
 		this.x = -this.height;
+    delta['x'] = this.x;
+
 		this.y = this.ship.y;
+    delta['y'] = this.y;
 
     // reload missile
 		this.isLive = false;
+    delta['isLive'] = this.isLive;
+
+    if (typeof callback === 'function') callback(this.uuid, delta);
+
 	};
 
   Missile.prototype.interpolate = function() {

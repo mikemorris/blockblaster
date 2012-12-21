@@ -216,7 +216,7 @@
 		}
 	};
 
-	Ship.prototype.fire = function() {
+	Ship.prototype.fire = function(store, callback) {
 		this.now = game.time.now;
 		var fireDelta = (this.now - this.then)/1000;
 
@@ -237,7 +237,7 @@
 
 		if(readyToFire) {
 			this.fireButtonReleased = false;
-			missiles[0].fire();
+			missiles[0].fire(store, callback);
 			this.then = this.now;
 		}
 	};

@@ -163,8 +163,17 @@
                 for (var j = 0; j < missiles.length; j++) {
                   missile = missiles[j];
 
-                  client.ship.missiles[j].sy = parseInt(missile.state.y);
-                  client.ship.missiles[j].x = parseInt(missile.state.x);
+                  if (missile.state.y) {
+                    client.ship.missiles[j].sy = parseInt(missile.state.y);
+                  }
+
+                  if (missile.state.x) {
+                    client.ship.missiles[j].x = parseInt(missile.state.x);
+                  }
+
+                  if (missile.state.isLive) {
+                    client.ship.missiles[j].isLive = missile.state.isLive;
+                  }
 
                   client.ship.missiles[j].queue.server.push(missile);
                 }
@@ -283,8 +292,10 @@
         var missile = missiles[i];
 
         // TODO: fix missiles to update isLive properly
-        missile.interpolate();
-        missile.draw();
+        if (missile.isLive) {
+          missile.interpolate();
+          missile.draw();
+        }
       }
     };
 
