@@ -57,12 +57,19 @@
 	};
 
 	Missile.prototype.move = function(direction) {
+
+    var delta = {};
+
 		this.y -= this.vy * game.time.delta;
+    delta['y'] = this.y;
 
     // reload if offscreen
 		if(this.y < (0 - this.height)) {
 			this.reload();
 		}
+
+    if (typeof callback === 'function') callback(this.uuid, delta);
+
 	};
 
 	Missile.prototype.reload = function() {

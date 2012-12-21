@@ -185,7 +185,8 @@
             .hmset('ship:' + player.ship.uuid, 
               'x', player.ship.x,
               'y', player.ship.y,
-              'speed', player.ship.speed
+              'speed', player.ship.speed,
+              'vx', player.ship.vx
             )
             .exec(function(err, res) {
               // notify async.parallel that recursion has completed
@@ -205,7 +206,7 @@
                   'x', missile.x,
                   'y', missile.y,
                   'speed', missile.speed,
-                  'vx', missile.vx
+                  'vy', missile.vy
                 )
                 .exec(
                   function(err, res) {

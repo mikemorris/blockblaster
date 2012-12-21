@@ -24,7 +24,7 @@
     return this;
   };
 
-  var updateMissiles = function(missiles) {
+  var updateMissiles = function(store, missiles) {
     var checkCollisions = function(missile) {
       var keys = Object.keys(game.levels.npcs);
       var length = keys.length;
@@ -42,19 +42,30 @@
       }
     };
 
-    for (var i = missiles.length; i--;) {
-      var missile = missiles[i];
-      if(missile.isLive) {
-        missile.move();
-        checkCollisions(missile);
-      }
+    for (var i = 0; i < missiles.length; i++) {
+      (function(i) {
+        var missile = missiles[i];
+        var uuid = missile.uuid;
+
+        if(missile.isLive) {
+          missile.move(store, function(uuid, delta) {
+            var keys = Object.keys(delta);
+            var length = keys.length;
+            var key;
+
+            for (var i = 0; i < length; i++) {
+              key = keys[i];
+              store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
+            }
+          });
+
+          checkCollisions(missile);
+        }
+      })(i);
     }
   };
 
   var updateNPCs = function(socket, store) {
-    var anyDestroyed = false;
-
-    // TODO: is this loop syntax faster?
     var keys = Object.keys(game.levels.npcs);
     var length = keys.length;
 
@@ -64,7 +75,6 @@
         var npc = game.levels.npcs[uuid];
 
         if(npc.isDestroyed) {
-          anyDestroyed = true;
           delete game.levels.npcs[uuid];
 
           store.multi()
@@ -109,7 +119,7 @@
       uuid = players[i];
       player = game.levels.players[uuid];
 
-      this.updateMissiles(player.ship.missiles);
+      this.updateMissiles(store, player.ship.missiles);
 
       // no input to process
       if (!player.queue.length) continue;
