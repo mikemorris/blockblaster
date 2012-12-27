@@ -45,6 +45,7 @@
             'vx', npc.vx,
             'direction', npc.direction
           )
+          .zadd('expire', Date.now(), 'npc+' + npc.uuid)
           .exec(function(err, res) {
             // add npc to server object
             npcs[uuid] = npc;

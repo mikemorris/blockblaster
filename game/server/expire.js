@@ -52,6 +52,7 @@
       }
     });
 
+    // TODO: running twice even on a single drone due to latency
     // could this trigger thundering herd problem with multiple drones?
     // use timestamp lock in redis to guarantee no race condition?
     store.scard('npc', function(err, res) {
