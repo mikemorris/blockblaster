@@ -217,15 +217,22 @@
 	};
 
 	Ship.prototype.fire = function(store, callback) {
+
 		this.now = game.time.now;
 		var fireDelta = (this.now - this.then)/1000;
 
     // filter by isLive
+    var keys = Object.keys(this.missiles);
+    var length = keys.length;
+    var key;
+
     var missiles = [];
     var missile;
 
-    for (var i = 0; i < this.missiles.length; i++) {
-      missile = this.missiles[i];
+    for (var i = 0; i < length; i++) {
+      key = keys[i];
+      missile = this.missiles[key];
+
       if (!missile.isLive) {
         missiles.push(missile);
       }
@@ -240,6 +247,7 @@
 			missiles[0].fire(store, callback);
 			this.then = this.now;
 		}
+
 	};
 
 	Ship.prototype.drawType = function() {

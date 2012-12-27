@@ -59,11 +59,13 @@
 
     var delta = {};
 
-		this.x = this.ship.x + this.ship.width / 2 - this.width / 2;
-    delta['x'] = this.x;
+    if (this.ship) {
+      this.x = this.ship.x + this.ship.width / 2 - this.width / 2;
+      delta['x'] = this.x;
 
-		this.y = this.ship.y;
-    delta['y'] = this.y;
+      this.y = this.ship.y;
+      delta['y'] = this.y;
+    }
 
 		this.vy = this.speed;
     delta['vy'] = this.vy;
@@ -99,8 +101,10 @@
 		this.x = -this.height;
     delta['x'] = this.x;
 
-		this.y = this.ship.y;
-    delta['y'] = this.y;
+    if (this.ship) {
+      this.y = this.ship.y;
+      delta['y'] = this.y;
+    }
 
     // reload missile
 		this.isLive = false;
