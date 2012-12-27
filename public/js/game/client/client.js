@@ -158,24 +158,38 @@
 
                 // update missiles
                 var missiles = player.ship.missiles;
+                var keys = Object.keys(missiles);
+
+                var key;
                 var missile;
+                var clientMissile;
 
-                for (var j = 0; j < missiles.length; j++) {
-                  missile = missiles[j];
+                // all values passed from redis as strings
+                // must be converted to correct type
+                for (var j = 0; j < keys.length; j++) {
+                  key = keys[j];
+                  
+                  // set serverMissile to get state
+                  serverMissile = missiles[key];
 
-                  if (missile.state.y) {
-                    client.ship.missiles[j].sy = parseInt(missile.state.y);
+                  // find clientMissile in array
+                  clientMissile = _.find(client.ship.missiles, function(missile, uuid) {
+                    return uuid === key;
+                  });
+
+                  if (serverMissile.state.y) {
+                    clientMissile.sy = parseInt(serverMissile.state.y);
                   }
 
-                  if (missile.state.x) {
-                    client.ship.missiles[j].x = parseInt(missile.state.x);
+                  if (serverMissile.state.x) {
+                    clientMissile.x = parseInt(serverMissile.state.x);
                   }
 
-                  if (missile.state.isLive) {
-                    client.ship.missiles[j].isLive = missile.state.isLive;
+                  if (serverMissile.state.isLive) {
+                    clientMissile.isLive = (serverMissile.state.isLive === 'true');
                   }
 
-                  client.ship.missiles[j].queue.server.push(missile);
+                  clientMissile.queue.server.push(serverMissile);
                 }
 
               }
@@ -288,10 +302,15 @@
     var player;
 
     var updateMissiles = function(missiles) {
-      for (var i = missiles.length; i--;) {
-        var missile = missiles[i];
+      var keys = Object.keys(missiles);
+      var length = keys.length;
+      var key;
+      var missile;
 
-        // TODO: fix missiles to update isLive properly
+      for (var i = 0; i < length; i++) {
+        key = keys[i];
+        missile = missiles[key];
+
         if (missile.isLive) {
           missile.interpolate();
           missile.draw();

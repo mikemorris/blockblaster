@@ -134,93 +134,96 @@
         // some scope issues with iterating over res and updating values individually?
         var next = player.ship.state = res;
 
-        // init delta array for changed keys
-        var deltaKeys = [];
+        // error thrown here if init hasn't finished
+        if (next) {
+          // init delta array for changed keys
+          var deltaKeys = [];
 
-        // iterate over new values and compare to old
-        var keys = Object.keys(next);
-        var length = keys.length;
-        var key;
+          // iterate over new values and compare to old
+          var keys = Object.keys(next);
+          var length = keys.length;
+          var key;
 
-        for (var i = 0; i < length; i++) {
-          key = keys[i];
+          for (var i = 0; i < length; i++) {
+            key = keys[i];
 
-          // check for changed values and push key to deltaKeys array
-          if (prev[key] !== next[key]) {
-            deltaKeys.push(key);
+            // check for changed values and push key to deltaKeys array
+            if (prev[key] !== next[key]) {
+              deltaKeys.push(key);
+            }
           }
-        }
 
-        // set changed values in data object
-        if (deltaKeys.length) {
-          delta.ship = {};
-          delta.ship.state = _.pick(next, deltaKeys);
-        }
+          // set changed values in data object
+          if (deltaKeys.length) {
+            delta.ship = {};
+            delta.ship.state = _.pick(next, deltaKeys);
+          }
 
-        // init missiles
-        var missiles = [];
+          // init missiles
+          var missiles = {};
 
-        // iterate over missiles
-        async.forEach(
-          player.ship.missiles,
-          function(missile, callback) {
-            // TODO: get missile state from redis
-            store.hgetall('missile:' + missile.uuid, function(err, res) {
-              // save reference to old values and update state
-              var prev = missile.state;
+          // iterate over missiles
+          async.forEach(
+            player.ship.missiles,
+            function(missile, callback) {
+              // TODO: get missile state from redis
+              store.hgetall('missile:' + missile.uuid, function(err, res) {
+                // save reference to old values and update state
+                var prev = missile.state;
 
-              // some scope issues with iterating over res and updating values individually?
-              var next = missile.state = res;
+                // some scope issues with iterating over res and updating values individually?
+                var next = missile.state = res;
 
-              // init delta array for changed keys
-              var deltaKeys = [];
+                // init delta array for changed keys
+                var deltaKeys = [];
 
-              // iterate over new values and compare to old
-              var keys = Object.keys(next);
-              var length = keys.length;
-              var key;
+                // iterate over new values and compare to old
+                var keys = Object.keys(next);
+                var length = keys.length;
+                var key;
 
-              for (var i = 0; i < length; i++) {
-                key = keys[i];
+                for (var i = 0; i < length; i++) {
+                  key = keys[i];
 
-                // check for changed values and push key to deltaKeys array
-                if (prev[key] !== next[key]) {
-                  deltaKeys.push(key);
+                  // check for changed values and push key to deltaKeys array
+                  if (prev[key] !== next[key]) {
+                    deltaKeys.push(key);
+                  }
                 }
+
+                // set changed values in data object
+                if (deltaKeys.length) {
+                  var deltaMissile = {};
+                  deltaMissile.state = _.pick(next, deltaKeys);
+                  missiles[missile.uuid] = deltaMissile;
+                }
+
+                // notify async.forEach that iterator has completed
+                if (typeof callback === 'function') callback();
+
+              });
+            },
+            function() {
+              if (Object.keys(missiles).length) {
+                delta.ship = delta.ship || {};
+                delta.ship.missiles = missiles;
               }
 
               // set changed values in data object
-              if (deltaKeys.length) {
-                var deltaMissile = {};
-                deltaMissile.state = _.pick(next, deltaKeys);
-                missiles.push(deltaMissile);
+              if (Object.keys(delta).length) {
+                delta.time = Date.now();
+                data.players[uuid] = delta;
               }
 
-              // notify async.forEach that iterator has completed
-              if (typeof callback === 'function') callback();
-
-            });
-          },
-          function() {
-            if (missiles.length) {
-              delta.ship = delta.ship || {};
-              delta.ship.missiles = missiles;
-            }
-
-            // set changed values in data object
-            if (Object.keys(delta).length) {
-              delta.time = Date.now();
-              data.players[uuid] = delta;
-            }
-
-            // only expire socket or browser session clients
-            store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
-          
-            // notify async that iterator has completed
-            if (typeof callback === 'function') callback();
+              // only expire socket or browser session clients
+              store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
             
-          }
-        );
+              // notify async that iterator has completed
+              if (typeof callback === 'function') callback();
+              
+            }
+          );
+        }
 
       });
 
@@ -278,6 +281,7 @@
 
     // console.log(data);
 
+    /*
     var keys = Object.keys(data.players);
     var key;
 
@@ -287,6 +291,7 @@
         console.log(data.players[key].ship.missiles);
       }
     }
+    */
 
     // return delta object to client
     socket.io.sockets.emit('state:update', data);

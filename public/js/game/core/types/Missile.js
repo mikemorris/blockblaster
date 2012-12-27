@@ -52,6 +52,7 @@
 		this.reload(store, callback);
 
     if (typeof callback === 'function') callback(this.uuid, delta);
+
 	};
 
 	Missile.prototype.fire = function(store, callback) {
