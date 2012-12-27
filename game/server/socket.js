@@ -52,7 +52,7 @@
 
       // init redis client
       var rc = redis.createClient(config.redis.port, config.redis.host);
-      rc.auth(config.redis.password, function(err) { if (err) throw err; });
+      rc.auth(config.redis.auth, function(err) { if (err) throw err; });
 
       // check if user already exists
       // TODO: only set for permanent id, break out into function

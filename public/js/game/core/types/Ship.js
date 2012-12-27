@@ -105,6 +105,7 @@
 	};
 
   Ship.prototype.reconcile = function(player) {
+
     // server reconciliation
     var dx = 0;
     var dy = 0;
@@ -138,15 +139,23 @@
       // console.log('latency', latency);
 
       var smoothing = (1 / latency) * 1000;
-      // console.log('smoothing', smoothing);
 
       vx = this.speed * game.time.delta * dx;
 
       // reconciled position
-      x = this.sx + vx;
+      player.ship.state.x = parseInt(player.ship.state.x) + vx;
 
-      // apply smoothing
-      this.x = game.core.lerp(this.x, x, game.time.delta * smoothing);
+      // clear entity interpolation queue
+      this.queue.server = [];
+
+      // queue server updates for entity interpolation
+      this.queue.server.push(player);
+      
+      // splice array, keeping BUFFER_SIZE most recent items
+      if (this.queue.server.length >= game.buffersize) {
+        this.queue.server.splice(0, this.queue.server.length - game.buffersize);
+      }
+
     }
 
   };

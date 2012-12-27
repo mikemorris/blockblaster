@@ -117,31 +117,24 @@
 
               if (player.ship.state) {
 
-                // set server state
-                if (player.ship.state.x) {
-                  client.ship.sx = parseInt(player.ship.state.x);
-                }
-
                 if (player.ship.state.y) {
                   client.ship.sy = parseInt(player.ship.state.y);
                 }
 
                 if (uuid === game.uuid) {
 
-                  // set smoothing coefficient
-                  player.smoothing = 1000;
-
                   // reconcile client prediction with server
                   client.ship.reconcile(player);
 
                 } else {
 
-                  // set interpolation targets
-                  client.ship.server.x = client.ship.sx;
-                  client.ship.server.y = client.ship.sy;
+                  // set server state
+                  if (player.ship.state.x) {
+                    client.ship.sx = parseInt(player.ship.state.x);
+                  }
 
-                  // set smoothing coefficient
-                  player.smoothing = game.smoothing;
+                  // clear entity interpolation queue
+                  client.ship.queue.server = [];
 
                   // queue server updates for entity interpolation
                   client.ship.queue.server.push(player);
@@ -150,6 +143,7 @@
                   if (client.ship.queue.server.length >= game.buffersize) {
                     client.ship.queue.server.splice(0, client.ship.queue.server.length - game.buffersize);
                   }
+
                 }
 
               }
@@ -322,14 +316,18 @@
       uuid = players[i];
       player = game.players[uuid];
 
-      // client prediction only for active player
       if (uuid === game.uuid) {
+
+        // client prediction only for active player
         player.ship.respondToInput();
         player.ship.move();
         player.ship.interpolate();
+
       } else {
+
         // interpolate position of other players
         player.ship.interpolate();
+
       }
 
       updateMissiles(player.ship.missiles);
