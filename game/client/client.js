@@ -133,17 +133,6 @@
                     client.ship.sx = parseInt(player.ship.state.x);
                   }
 
-                  // clear entity interpolation queue
-                  client.ship.queue.server = [];
-
-                  // queue server updates for entity interpolation
-                  client.ship.queue.server.push(player);
-                  
-                  // splice array, keeping BUFFER_SIZE most recent items
-                  if (client.ship.queue.server.length >= game.buffersize) {
-                    client.ship.queue.server.splice(0, client.ship.queue.server.length - game.buffersize);
-                  }
-
                 }
 
               }
@@ -326,6 +315,7 @@
       } else {
 
         // interpolate position of other players
+        player.ship.move();
         player.ship.interpolate();
 
       }

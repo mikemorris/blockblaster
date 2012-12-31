@@ -63,6 +63,7 @@
 	};
 
 	Ship.prototype.respondToInput = function() {
+
 		var pressed = game.input.pressed;
     var vector = game.core.getVelocity(pressed);
     var fireButtonChanged = false;
@@ -82,6 +83,7 @@
 
     if (this.vx || pressed.spacebar || fireButtonChanged) {
       // create input object
+      // TODO: pass speed and delta too
       input = {
         time: Date.now(),
         seq: game.seq++,
@@ -96,11 +98,22 @@
       game.queue.input.push(input);
       game.socket.emit('command:send', input);
     }
+
 	};
 
 	Ship.prototype.move = function() {
 
-		this.x += this.vx;
+    if (this.sx) {
+      // queue server updates for entity interpolation
+      this.queue.server.push(this);
+      
+      // splice array, keeping BUFFER_SIZE most recent items
+      if (this.queue.server.length >= game.buffersize) {
+        this.queue.server.splice(0, this.queue.server.length - game.buffersize);
+      }
+    } else {
+      this.x += this.vx;
+    }
 
 	};
 
@@ -117,58 +130,39 @@
 
     // bind this inside filter to Ship
     // remove most recent processed move and all older moves from queue
-    game.queue.input = game.queue.input.filter((function(el, index, array) {
+    var queue = game.queue.input = game.queue.input.filter((function(el, index, array) {
       if (el.seq == this.ack) then = el;
       return el.seq > this.ack;
     }).bind(this));
 
-    // cache length for replay loop
-    length = game.queue.input.length;
-
-    for (var i = 0; i < length; i++) {
-      vector = game.queue.input[i].data.vector;
-      dx += vector.dx;
-      dy += vector.dy;
-    }
-
-    // update client position with reconciled prediction
-    // server position plus delta of unprocessed input
-
     if (then) {
-      var latency = (Date.now() - then.time);
-      // console.log('latency', latency);
 
-      var smoothing = (1 / latency) * 1000;
+      // update client position with reconciled prediction
+      // server position plus delta of unprocessed input
+      game.time.latency = (Date.now() - then.time) / 1000;
 
-      vx = this.speed * game.time.delta * dx;
+      for (var i = 0; i < queue.length; i++) {
+        // TODO: speed and delta from queue
+        dx += parseInt(this.speed * queue[i].data.vector.dx * game.time.delta);
+      }
 
       // reconciled position
-      player.ship.state.x = parseInt(player.ship.state.x) + vx;
-
-      // clear entity interpolation queue
-      this.queue.server = [];
-
-      // queue server updates for entity interpolation
-      this.queue.server.push(player);
-      
-      // splice array, keeping BUFFER_SIZE most recent items
-      if (this.queue.server.length >= game.buffersize) {
-        this.queue.server.splice(0, this.queue.server.length - game.buffersize);
-      }
+      this.sx = parseInt(player.ship.state.x) + dx;
 
     }
 
   };
 
   Ship.prototype.interpolate = function() {
+
     // entity interpolation
     var difference = Math.abs(this.sx - this.x);
 
     // return if no server updates to process
-    if (!this.queue.server.length || difference < 0.1) return;
+    if (!this.queue.server.length) return;
 
     // snap if large difference
-    if (difference > 200) {
+    if (difference < 0.1 || difference > 200) {
       this.x = this.sx;
       return;
     }
@@ -211,10 +205,11 @@
     }
 
     // interpolated position
-    x = game.core.lerp(current.ship.state.x, target.ship.state.x, timePoint);
+    x = game.core.lerp(current.sx, target.sx, timePoint);
 
     // apply smoothing
     this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+
   };
 
 	Ship.prototype.loadMissiles = function() {
@@ -228,7 +223,7 @@
 	Ship.prototype.fire = function(store, callback) {
 
 		this.now = game.time.now;
-		var fireDelta = (this.now - this.then)/1000;
+		var fireDelta = (this.now - this.then) / 1000;
 
     // filter by isLive
     var keys = Object.keys(this.missiles);
