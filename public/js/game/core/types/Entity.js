@@ -21,7 +21,7 @@
 		}
 	};
 
-	Entity.prototype.set = function(properties){
+	Entity.prototype.set = function(properties) {
 		for(var property in properties) {
 			this[property] = properties[property];
 		}
@@ -31,23 +31,25 @@
 		this.scale = this.scale || 1;
 	};
 
-	Entity.prototype.draw = function() {
-    game.ctx.save();
+	Entity.prototype.draw = function(client) {
+
+    client.ctx.save();
 
     // Round to whole pixel
     var x = (this.x + 0.5) | 0;
     var y = (this.y + 0.5) | 0;
 
     // Apply Transformations (scale and rotate from center)
-    game.ctx.translate(x + this.width / 2, y + this.height / 2);
-    game.ctx.rotate(this.rotation);
-    game.ctx.scale(this.scale, this.scale);
-    game.ctx.translate(-this.width/2, -this.height/2);
+    client.ctx.translate(x + this.width / 2, y + this.height / 2);
+    client.ctx.rotate(this.rotation);
+    client.ctx.scale(this.scale, this.scale);
+    client.ctx.translate(-this.width/2, -this.height/2);
 
     // Call extended Entity Type's draw method
-    this.drawType && this.drawType();
+    this.drawType && this.drawType(client);
 
-    game.ctx.restore();
+    client.ctx.restore();
+
 	};
 
   return Entity;

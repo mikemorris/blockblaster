@@ -4,18 +4,25 @@
     module.exports = factory();
   } else if (typeof define === 'function' && define.amd) {
     // AMD
-    define(factory);
+    define(['../core/core', '../core/time', './input', '../core/types/Player', '../core/types/Enemy'], factory);
   } else {
     // browser globals (root is window)
     root.GAME.client = factory(root.GAME || {});
   }
-})(this, function(game) {
+})(this, function(core, time, input, Player, Enemy) {
 
-  var init = function() {
+  var players = {};
+  var npcs = {};
 
-    // clear players object to purge disconnected ghosts
-    game.players = {};
-    game.npcs = {};
+  // input sequence id
+  var seq = 0;
+
+  // queue
+  var queue = {};
+  queue.input = [];
+  queue.server = [];
+
+  var init = function(client) {
 
     // set methods to run every frame
     // TODO: decouple this asynchronously?
@@ -25,7 +32,8 @@
       this.updateNPCs
     ];
 
-    var socket = game.socket = io.connect();
+    // socket.io client connection
+    var socket = this.socket = io.connect();
 
     socket.on('players', function(data) {
       var players = Object.keys(data);
@@ -33,21 +41,21 @@
       var uuid;
 
       // wipe old data from game.players
-      game.players = {};
+      client.players = {};
 
       // init players using data from server
       for (var i = 0; i < length; i++) {
         uuid = players[i];
-        game.players[uuid] = new game.Player(data[uuid]);
+        client.players[uuid] = new Player(data[uuid]);
       }
 
       // bind add/remove listeners after init
       socket.on('players:add', function(data) {
-        game.players[data.uuid] = new game.Player(data.player);
+        client.players[data.uuid] = new Player(data.player);
       });
 
       socket.on('players:remove', function(uuid) {
-        delete game.players[uuid];
+        delete client.players[uuid];
       });
     });
 
@@ -58,36 +66,37 @@
       var npc;
 
       // wipe old data from game.npcs
-      game.npcs = {};
+      client.npcs = {};
 
       // init NPCs using data from server
       for (var i = 0; i < length; i++) {
         uuid = npcs[i];
         npc = data[uuid];
-        game.npcs[uuid] = new game.Enemy(npc.x, npc.y, npc.direction);
+        client.npcs[uuid] = new Enemy(npc.x, npc.y, npc.direction);
       }
 
       // bind add/remove listeners after init
       socket.on('npc:add', function(npc) {
-        game.npcs[npc.uuid] = new game.Enemy(npc.state.x, npc.state.y, npc.state.direction);
+        client.npcs[npc.uuid] = new Enemy(npc.state.x, npc.state.y, npc.state.direction);
       });
 
       socket.on('npc:destroy', function(uuid) {
         // TODO: cleanup, remove from canvas
         // delete game.npcs[uuid];
-        game.npcs[uuid].destroy();
+        client.npcs[uuid].destroy();
       });
     });
 
     // set socket.uid before processing updates
     socket.on('uuid', function(data) {
-      game.uuid = data;
+
+      client.uuid = data;
 
       socket.on('state:update', function(data) {
 
         // update server time (used for entity interpolation)
-        game.time.server = data.time;
-        game.time.client = game.time.server - game.offset;
+        time.server = data.time;
+        time.client = time.server - core.offset;
 
         // update players
         var players = Object.keys(data.players);
@@ -95,7 +104,7 @@
 
         var uuid;
         var player;
-        var client;
+        var client_player;
 
         // update server state, interpolate foreign entities
         if (length) {
@@ -105,32 +114,32 @@
             player = data.players[uuid];
 
             // authoritatively set internal state if player exists on client
-            client = game.players[uuid];
+            client_player = client.players[uuid];
 
             // update last acknowledged input
             if (player.ack) {
-              client.ship.ack = player.ack;
+              client_player.ship.ack = player.ack;
             }
 
             // TODO: clean this up
-            if (client && player.ship) {
+            if (client_player && player.ship) {
 
               if (player.ship.state) {
 
                 if (player.ship.state.y) {
-                  client.ship.sy = parseInt(player.ship.state.y);
+                  client_player.ship.sy = parseInt(player.ship.state.y);
                 }
 
-                if (uuid === game.uuid) {
+                if (uuid === client.uuid) {
 
                   // reconcile client prediction with server
-                  client.ship.reconcile(player);
+                  client_player.ship.reconcile(client, player);
 
                 } else {
 
                   // set server state
                   if (player.ship.state.x) {
-                    client.ship.sx = parseInt(player.ship.state.x);
+                    client_player.ship.sx = parseInt(player.ship.state.x);
                   }
 
                 }
@@ -156,7 +165,7 @@
                   serverMissile = missiles[key];
 
                   // find clientMissile in array
-                  clientMissile = _.find(client.ship.missiles, function(missile, uuid) {
+                  clientMissile = _.find(client_player.ship.missiles, function(missile, uuid) {
                     return uuid === key;
                   });
 
@@ -198,7 +207,7 @@
             npc = data.npcs[uuid];
 
             // authoritatively set internal state if player exists on client
-            client_npc = game.npcs[uuid];
+            client_npc = client.npcs[uuid];
 
             if (client_npc) {
               // update last acknowledged input
@@ -219,8 +228,8 @@
               client_npc.queue.server.push(npc);
               
               // splice array, keeping BUFFER_SIZE most recent items
-              if (client_npc.queue.server.length >= game.buffersize) {
-                client_npc.queue.server.splice(-game.buffersize);
+              if (client_npc.queue.server.length >= core.buffersize) {
+                client_npc.queue.server.splice(-core.buffersize);
               }
             }
           }
@@ -236,12 +245,16 @@
     */
   };
 
-  var loop = function() {
-    // game.client necessary because of scope change on successive calls
-    game.client.animationFrame = window.requestAnimationFrame(game.client.loop);
+  var loop = function(client) {
+    client = client || this;
 
-    game.time.setDelta();
-    game.client.runFrameActions();
+    // this bind necessary because of scope change on successive calls
+    client.animationFrame = window.requestAnimationFrame((function() {
+      loop(client);
+    }).bind(client));
+
+    time.setDelta();
+    runFrameActions(client);
   };
 
   var pause = function() {
@@ -260,26 +273,26 @@
     }
   };
 
-  var runFrameActions = function() {
-    for (var i = 0; i < this.actions.length; i++) {
-      this.actions[i]();
+  var runFrameActions = function(client) {
+    for (var i = 0; i < client.actions.length; i++) {
+      client.actions[i](client);
     }
   };
 
-  var clearCanvas = function() {
-    game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+  var clearCanvas = function(client) {
+    client.ctx.clearRect(0, 0, client.canvas.width, client.canvas.height);
   };
 
   var createCanvas = function(width, height) {
-    game.canvas = document.createElement('canvas');
-    game.ctx = game.canvas.getContext('2d');
-    game.canvas.width = width;
-    game.canvas.height = height;
-    document.getElementById('canvas-wrapper').appendChild(game.canvas);
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.canvas.width = width;
+    this.canvas.height = height;
+    document.getElementById('canvas-wrapper').appendChild(this.canvas);
   };
 
-  var updatePlayers = function() {
-    var players = Object.keys(game.players);
+  var updatePlayers = function(client) {
+    var players = Object.keys(client.players);
     var length = players.length;
     var uuid;
     var player;
@@ -296,19 +309,19 @@
 
         if (missile.isLive) {
           missile.interpolate();
-          missile.draw();
+          missile.draw(client);
         }
       }
     };
 
     for (var i = 0; i < length; i++) {
       uuid = players[i];
-      player = game.players[uuid];
+      player = client.players[uuid];
 
-      if (uuid === game.uuid) {
+      if (uuid === client.uuid) {
 
         // client prediction only for active player
-        player.ship.respondToInput();
+        player.ship.respondToInput(client, input.pressed);
         player.ship.move();
         player.ship.interpolate();
 
@@ -322,12 +335,12 @@
 
       updateMissiles(player.ship.missiles);
 
-      player.ship.draw();
+      player.ship.draw(client);
     }
   };
 
-  var updateNPCs = function() {
-    var npcs = Object.keys(game.npcs);
+  var updateNPCs = function(client) {
+    var npcs = Object.keys(client.npcs);
     var length = npcs.length;
     var uuid;
     var npc;
@@ -335,14 +348,18 @@
     // TODO: is this loop syntax faster?
     for (var i = length; i--;) {
       uuid = npcs[i];
-      npc = game.npcs[uuid];
+      npc = client.npcs[uuid];
 
       npc.interpolate();
-      npc.draw();
+      npc.draw(client);
     }
   };
 
   return {
+    players: players,
+    npcs: npcs,
+    seq: seq,
+    queue: queue,
     init: init,
     loop: loop,
     pause: pause,

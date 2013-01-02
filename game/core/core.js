@@ -88,29 +88,16 @@
 
   var initGlobalVariables = function() {
 
-    // input
-    game.keysDown = [];
-
-    // input sequence id
-    game.seq = 0;
-
-    // queue
-    game.queue = {};
-    game.queue.input = [];
-    game.queue.server = [];
-
-    // socket.io
-    game.socket;
-
     // entity interpolation offset (milliseconds)
-    game.offset = 100;
+    this.offset = 100;
 
     // entity interpolation buffer size, frames * seconds
-    game.buffersize = 120;
+    this.buffersize = 120;
 
     // entity interpolation smoothing factor
     // lower number is slower smoothing
-    game.smoothing = 20;
+    this.smoothing = 20;
+
   };
 
   var isCollision = function(a, b) {

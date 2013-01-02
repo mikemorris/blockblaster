@@ -1,34 +1,47 @@
-window.GAME = window.GAME || {};
+(function(root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    // Node.js
+    module.exports = factory();
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(factory);
+  } else {
+    // browser globals (root is window)
+    root.GAME.input = factory(root.GAME || {});
+  }
+})(this, function(game) {
 
-(function(game) {
+  var pressed = {};
 
-	var input = game.input = {
-		keys: {
-			32: 'spacebar',
-			37: 'left',
-			39: 'right',
-			65: 'left',
-      68: 'right'
-		},
+  var keys = {
+    32: 'spacebar',
+    37: 'left',
+    39: 'right',
+    65: 'left',
+    68: 'right'
+  };
 
-		init: function() {
-			input.pressed = {};
-			window.addEventListener('keyup', input.keyInteraction);
-			window.addEventListener('keydown', input.keyInteraction);
-		},
+  var keyInteraction = function(event) {
+    var code = event.keyCode;
+    if(keys[code]) {
+      event.preventDefault();
+      pressed[keys[code]] = (event.type === 'keydown') ? true : false;
+      // Need more info here.
+      // - press (initial press)
+      // - down (true as long as down)
+      // - hold (what counts as a hold? + .5 seconds?)
+      // - release (initial release)
+    }
+  };
 
-		keyInteraction: function(event) {
-			var code = event.keyCode;
-			if(input.keys[code]) {
-				event.preventDefault();
-				input.pressed[input.keys[code]] = (event.type === 'keydown') ? true : false;
-				// Need more info here.
-				// - press (initial press)
-				// - down (true as long as down)
-				// - hold (what counts as a hold? + .5 seconds?)
-				// - release (initial release)
-			}
-		}
-	};
+  var init = function() {
+    window.addEventListener('keyup', keyInteraction);
+    window.addEventListener('keydown', keyInteraction);
+  };
 
-})(window.GAME);
+  return {
+    init: init,
+    pressed: pressed
+  };
+
+});

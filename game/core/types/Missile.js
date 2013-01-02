@@ -2,21 +2,20 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory(
-      {
-        'time': require('../time.js'),
-        'Rectangle': require('./Rectangle')
-      },
+      require('../core.js'),
+      require('../time.js'),
+      require('./Rectangle'),
       require('node-uuid')
     );
   } else if (typeof define === 'function' && define.amd) {
     // AMD
-    define(factory);
+    define(['../core', '../time', './Rectangle'], factory);
   } else {
     // browser globals (root is window)
     root.GAME = root.GAME || {};
     root.GAME.Missile = factory(root.GAME || {});
   }
-})(this, function(game, uuid) {
+})(this, function(core, time, Rectangle, uuid) {
 
 	var Missile = function(ship) {
     this.uuid = uuid ? uuid.v4() : false;
@@ -40,7 +39,7 @@
     this.queue.server = [];
 	};
 
-	Missile.prototype = new game.Rectangle();
+	Missile.prototype = new Rectangle();
 
 	Missile.prototype.explode = function(store, callback) {
 
@@ -82,7 +81,7 @@
 
     var delta = {};
 
-		this.y -= this.vy * game.time.delta;
+		this.y -= this.vy * time.delta;
     delta['y'] = this.y;
 
     // reload if offscreen
@@ -130,7 +129,7 @@
     var target
     var current;
 
-    var count = game.queue.server.length - 1;
+    var count = this.queue.server.length - 1;
 
     var prev;
     var next;
@@ -140,7 +139,7 @@
       next = this.queue.server[i + 1];
 
       // if client offset time is between points, set target and break
-      if(game.time.client > prev.time && game.time.client < next.time) {
+      if(time.client > prev.time && time.client < next.time) {
         target = prev;
         current = next;
         break;
@@ -156,16 +155,16 @@
     var timePoint = 0;
 
     if (target.time !== current.time) {
-      var difference = target.time - game.time.client;
+      var difference = target.time - time.client;
       var spread = target.time - current.time;
       timePoint = difference / spread;
     }
 
     // interpolated position
-    y = game.core.lerp(current.state.y, target.state.y, timePoint);
+    y = core.lerp(current.state.y, target.state.y, timePoint);
 
     // apply smoothing
-    this.y = game.core.lerp(this.y, y, game.time.delta * game.smoothing);
+    this.y = core.lerp(this.y, y, time.delta * core.smoothing);
 
     // reload if offscreen
 		if(this.y < (0 - this.height)) {

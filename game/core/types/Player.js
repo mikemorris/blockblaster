@@ -1,25 +1,25 @@
 (function(root, factory) {
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
-    module.exports = factory({
-      'core': require('../core'),
-      'Entity': require('./Entity'),
-      'Missile': require('./Missile'),
-      'Ship': require('./Ship')
-    });
+    module.exports = factory(
+      require('../core'),
+      require('./Entity'),
+      require('./Missile'),
+      require('./Ship')
+    );
   } else if (typeof define === 'function' && define.amd) {
     // AMD
-    define(factory);
+    define(['../core', './Entity', './Missile', './Ship'], factory);
   } else {
     // browser globals (root is window)
     root.GAME = root.GAME || {};
     root.GAME.Player = factory(root.GAME || {});
   }
-})(this, function(game) {
+})(this, function(core, Entity, Missile, Ship) {
 
   // constructor
 	var Player = function(player) {
-		this.ship = new game.Ship();
+		this.ship = new Ship();
 
     // init from existing state
     if (player) {
@@ -47,7 +47,7 @@
       for (var j = 0; j < player.ship.missiles.length; j++) {
         missile = player.ship.missiles[j];
 
-        this.ship.missiles[missile.uuid] = new game.Missile();
+        this.ship.missiles[missile.uuid] = new Missile();
       }
     }
 
@@ -58,7 +58,7 @@
     return this;
 	};
 
-	Player.prototype = new game.Entity();
+	Player.prototype = new Entity();
 
 	Player.prototype.getState = function() {
     return {

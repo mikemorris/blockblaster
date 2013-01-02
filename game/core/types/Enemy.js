@@ -2,28 +2,27 @@
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
     module.exports = factory(
-      {
-        'core': require('../core'),
-        'time': require('../time'),
-        'Entity': require('./Entity')
-      },
+      require('../core'),
+      require('../time'),
+      require('./Entity'),
+      undefined,
       require('node-uuid')
     );
   } else if (typeof define === 'function' && define.amd) {
     // AMD
-    define(factory);
+    define(['../core', '../time', './Entity', './Image'], factory);
   } else {
     // browser globals (root is window)
     root.GAME = root.GAME || {};
     root.GAME.Enemy = factory(root.GAME || {});
   }
-})(this, function(game, uuid) {
+})(this, function(core, time, Entity, Image, uuid) {
 
 	var Enemy = function(x, y, direction) {
     this.uuid = uuid ? uuid.v4() : false;
 
 		var properties = {
-			x: x + game.core.getRandomNumber(-25, 25),
+			x: x + core.getRandomNumber(-25, 25),
 			y: y,
 			speed: 100,
 			vx: 100,
@@ -37,7 +36,7 @@
     this.width = 50;
     this.height = 30;
     this.color = 'rgba(0, 0, 255, 0.25)';
-    this.image = game.Image ? new game.Image('images/enemy.png') : false;
+    this.image = Image ? new Image('images/enemy.png') : false;
 
     this.missiles = [];
     this.maxMissiles = 5;
@@ -54,7 +53,7 @@
     this.queue.server = [];
 	};
 
-	Enemy.prototype = new game.Entity();
+	Enemy.prototype = new Entity();
 
 	Enemy.prototype.destroy = function() {
 		this.isHit = true;
@@ -62,32 +61,32 @@
 		// this.isDestroyed = true;
 	};
 
-	Enemy.prototype.drawType = function() {
-		if(game.debug) {
+	Enemy.prototype.drawType = function(client) {
+		if(core.debug) {
 			if(this.isDestroyed) {
 				this.color = 'red';
 			}
 			// Show hit-area
-			game.ctx.fillStyle = this.color;
-			game.ctx.fillRect(0,0,this.width, this.height);
-			game.ctx.fill();
+			client.ctx.fillStyle = this.color;
+			client.ctx.fillRect(0,0,this.width, this.height);
+			client.ctx.fill();
 		}
-		this.image.draw();
+		this.image.draw(client);
 	};
 
 	Enemy.prototype.move = function(store, callback) {
 
     var delta = {};
 
-		this.x += this.vx * this.direction * game.time.delta;
+		this.x += this.vx * this.direction * time.delta;
     delta['x'] = this.x;
 
     // missile impact
 		if(this.isHit) {
-			this.y += this.vy * game.time.delta;
+			this.y += this.vy * time.delta;
       delta['y'] = this.y;
 
-			this.rotation += 20 * game.time.delta;
+			this.rotation += 20 * time.delta;
       delta['rotation'] = this.rotation;
 
 			this.isDestroyed = this.y < -Math.max(this.height, this.width);
@@ -140,7 +139,7 @@
       next = this.queue.server[i + 1];
 
       // if client offset time is between points, set target and break
-      if(game.time.client > prev.time && game.time.client < next.time) {
+      if(time.client > prev.time && time.client < next.time) {
         target = prev;
         current = next;
         break;
@@ -156,20 +155,20 @@
     var timePoint = 0;
 
     if (target.time !== current.time) {
-      var difference = target.time - game.time.client;
+      var difference = target.time - time.client;
       var spread = target.time - current.time;
       timePoint = difference / spread;
     }
 
     // interpolated position
     if (current.x && target.x) {
-      x = game.core.lerp(current.x, target.x, timePoint);
-      this.x = game.core.lerp(this.x, x, game.time.delta * game.smoothing);
+      x = core.lerp(current.x, target.x, timePoint);
+      this.x = core.lerp(this.x, x, time.delta * core.smoothing);
     }
 
     if (current.y && target.y) {
-      y = game.core.lerp(current.y, target.y, timePoint);
-      this.y = game.core.lerp(this.y, y, game.time.delta * game.smoothing);
+      y = core.lerp(current.y, target.y, timePoint);
+      this.y = core.lerp(this.y, y, time.delta * core.smoothing);
     }
   };
 
