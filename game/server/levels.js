@@ -47,12 +47,18 @@
           )
           .zadd('expire', Date.now(), 'npc+' + npc.uuid)
           .exec(function(err, res) {
+            console.log(err, res);
             // add npc to server object
             npcs[uuid] = npc;
             socket.io.sockets.emit('npc:add', npc.getState());
           });
       })(i);
     }
+
+    // release lock
+    store.del('lock:npc', function(err, res) {
+      console.log('lock released');
+    });
   };
 
   return {
