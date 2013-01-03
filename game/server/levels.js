@@ -2,10 +2,11 @@
   if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
-      require('../core/types/Enemy.js')
+      require('../core/types/Enemy.js'),
+      require('async')
     );
   }
-})(this, function(Enemy) {
+})(this, function(Enemy, async) {
 
   var players = {};
   var npcs = {};
@@ -25,12 +26,9 @@
       new Enemy(700, 80, -1)
     ];
 
-    var length = enemies.length;
-
-    for (var i = 0; i < length; i++) {
-      // closure to iterate properly
-      (function(i) {
-        var npc = enemies[i];
+    async.forEach(
+      enemies,
+      function(npc, callback) {
         var uuid = npc.uuid;
 
         // add npc to redis set
@@ -47,18 +45,19 @@
           )
           .zadd('expire', Date.now(), 'npc+' + npc.uuid)
           .exec(function(err, res) {
-            console.log(err, res);
             // add npc to server object
             npcs[uuid] = npc;
             socket.io.sockets.emit('npc:add', npc.getState());
-          });
-      })(i);
-    }
 
-    // release lock
-    store.del('lock:npc', function(err, res) {
-      console.log('lock released');
-    });
+            // notify async.forEach that function has completed
+            if (typeof callback === 'function') callback();
+          });
+      }, function() {
+        // release lock after all async operations complete
+        store.del('lock:npc', function(err, res) {});
+      }
+    );
+
   };
 
   return {

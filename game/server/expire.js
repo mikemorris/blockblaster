@@ -59,18 +59,12 @@
         store.setnx('lock:npc', Date.now() + 1000, function(err, res) {
           if (res) {
             // no lock previously set, lock acquired
-            console.log('lock acquired');
             levels.loadEnemies(socket, store);
           } else {
             store.getset('lock:npc', Date.now() + 1000, function(err, res) {
               if (res < Date.now()) {
                 // timestamp expired, lock acquired
-                console.log('lock expired');
-                console.log('lock acquired');
                 levels.loadEnemies(socket, store);
-              } else {
-                // timestamp valid, lock not acquired
-                console.log('lock not acquired');
               }
             });
           }
