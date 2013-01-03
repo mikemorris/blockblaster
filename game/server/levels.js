@@ -1,11 +1,11 @@
 (function(root, factory) {
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof exports === 'object') {
     // Node.js
-    module.exports = factory({
-      'Enemy': require('../core/types/Enemy.js')
-    });
+    module.exports = factory(
+      require('../core/types/Enemy.js')
+    );
   }
-})(this, function(game) {
+})(this, function(Enemy) {
 
   var players = {};
   var npcs = {};
@@ -13,16 +13,16 @@
   var loadEnemies = function(socket, store) {
 
     var enemies = [
-      new game.Enemy(100, 25),
-      new game.Enemy(250, 25),
-      new game.Enemy(400, 25),
-      new game.Enemy(550, 25),
-      new game.Enemy(700, 25),
-      new game.Enemy(100, 80, -1),
-      new game.Enemy(250, 80, -1),
-      new game.Enemy(400, 80, -1),
-      new game.Enemy(550, 80, -1),
-      new game.Enemy(700, 80, -1)
+      new Enemy(100, 25),
+      new Enemy(250, 25),
+      new Enemy(400, 25),
+      new Enemy(550, 25),
+      new Enemy(700, 25),
+      new Enemy(100, 80, -1),
+      new Enemy(250, 80, -1),
+      new Enemy(400, 80, -1),
+      new Enemy(550, 80, -1),
+      new Enemy(700, 80, -1)
     ];
 
     var length = enemies.length;

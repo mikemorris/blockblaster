@@ -1,12 +1,11 @@
 (function(root, factory) {
   if (typeof module !== 'undefined' && module.exports) {
     // Node.js
-    module.exports = factory({
-      'socket': require('./socket.js'),
-      'levels': require('./levels.js')
-    });
+    module.exports = factory(
+      require('./levels.js')
+    );
   }
-})(this, function(game) {
+})(this, function(levels) {
 
   var init = function(socket, store) {
     setInterval((function() {
@@ -46,7 +45,7 @@
             .del(set + ':' + id)
             .zrem('expire', item)
             .exec(function(err, res) {
-              game.socket.destroyChildren(store, id);
+              socket.destroyChildren(store, id);
             });
         })(set, id);
       }
@@ -57,7 +56,7 @@
     // use timestamp lock in redis to guarantee no race condition?
     store.scard('npc', function(err, res) {
       if (!res) {
-        game.levels.loadEnemies(socket, store);
+        levels.loadEnemies(socket, store);
       }
     });
 

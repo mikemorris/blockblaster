@@ -1,12 +1,9 @@
 (function(root, factory) {
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
-      {
-        'physics': require('./physics'),
-        'levels': require('./levels'),
-        'Player': require('../core/types/Player')
-      },
+      require('./levels'),
+      require('../core/types/Player'),
       require('async'),
       require('redis'),
       require('socket.io'),
@@ -14,7 +11,7 @@
       require('../../config')
     );
   }
-})(this, function(game, async, redis, sio, uuid, config) {
+})(this, function(levels, Player, async, redis, sio, uuid, config) {
 
   var init = function(app, channel) {
     var RedisStore = sio.RedisStore;
@@ -33,11 +30,13 @@
       }));
     });
 
-    this.listen(io);
+    listen(io);
 
     return {
-      io: io
+      io: io,
+      destroyChildren: destroyChildren
     };
+
   };
 
   var listen = function(io) {
@@ -100,7 +99,7 @@
 
       socket.on('command:send', function (command) {
         // add to server physics queue instead of immeadiately publishing
-        game.levels.players[socket.uuid].queue.push(command);
+        levels.players[socket.uuid].queue.push(command);
       })
       .on('disconnect', function() {
         var uuid = socket.uuid;
@@ -118,7 +117,7 @@
               rc.quit();
 
               // remove player from server
-              delete game.levels.players[uuid];
+              delete levels.players[uuid];
 
               // emit player:destroy event to client
               io.sockets.emit('players:remove', uuid);
@@ -136,7 +135,7 @@
   var addPlayer = function(io, socket, rc, player) {
 
     // add player to server object
-    game.levels.players[socket.uuid] = player;
+    levels.players[socket.uuid] = player;
 
     // init data object and attach player uid
     var data = {};
@@ -150,26 +149,26 @@
 
     var players = {};
 
-    var keys = Object.keys(game.levels.players);
+    var keys = Object.keys(levels.players);
     var key;
     var player;
 
     for (var i = 0; i < keys.length; i++) {
       key = keys[i];
-      player = game.levels.players[key];
+      player = levels.players[key];
       players[key] = player.getState();
     }
 
     // send full player list to new connection
     io.sockets.socket(socket.id).emit('players', players);
-    io.sockets.socket(socket.id).emit('npcs', game.levels.npcs);
+    io.sockets.socket(socket.id).emit('npcs', levels.npcs);
 
   };
 
   var initPlayer = function(io, socket, rc) {
 
     // init player
-    var player = new game.Player();
+    var player = new Player();
     
     // send uuid to client
     io.sockets.socket(socket.id).emit('uuid', socket.uuid.toString());
@@ -280,7 +279,7 @@
   var getPlayer = function(io, socket, rc) {
 
     // init player
-    var player = new game.Player();
+    var player = new Player();
     
     // send uuid to client
     io.sockets.socket(socket.id).emit('uuid', socket.uuid.toString());
@@ -352,10 +351,6 @@
   };
 
   return {
-    listen: listen,
-    addPlayer: addPlayer,
-    initPlayer: initPlayer,
-    destroyChildren: destroyChildren,
     init: init
   };
 

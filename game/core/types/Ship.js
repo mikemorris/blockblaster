@@ -1,5 +1,5 @@
 (function(root, factory) {
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
       require('../core'),
@@ -13,10 +13,6 @@
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(['../core', '../time', '../../client/input', './Entity', './Missile', './Image'], factory);
-  } else {
-    // browser globals (root is window)
-    root.GAME = root.GAME || {};
-    root.GAME.Ship = factory(root.GAME || {});
   }
 })(this, function(core, time, input, Entity, Missile, Image, uuid) {
 

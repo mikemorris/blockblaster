@@ -1,5 +1,5 @@
 (function(root, factory) {
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
       require('../core.js'),
@@ -10,10 +10,6 @@
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(['../core', '../time', './Rectangle'], factory);
-  } else {
-    // browser globals (root is window)
-    root.GAME = root.GAME || {};
-    root.GAME.Missile = factory(root.GAME || {});
   }
 })(this, function(core, time, Rectangle, uuid) {
 

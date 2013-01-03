@@ -1,15 +1,12 @@
 (function(root, factory) {
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof exports === 'object') {
     // Node.js
     module.exports = factory();
   } else if (typeof define === 'function' && define.amd) {
     // AMD
     define(factory);
-  } else {
-    // browser globals (root is window)
-    root.GAME.time = factory(root.GAME || {});
   }
-})(this, function(game) {
+})(this, function() {
 
   var then = Date.now();
 

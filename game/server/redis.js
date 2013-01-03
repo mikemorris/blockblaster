@@ -1,5 +1,5 @@
 (function(root, factory) {
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
       require('redis'),
@@ -30,6 +30,7 @@
       sub: sub,
       store: store
     };
+
   };
 
   return {

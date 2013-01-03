@@ -1,18 +1,14 @@
 (function(root, factory) {
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
-      {
-        'levels': require('./levels'),
-        'physics': require('./physics'),
-        'time': require('../core/time')
-      },
+      require('./levels'),
       require('async'),
       require('redis'),
       require('underscore')
     );
   }
-})(this, function(game, async, redis, _) {
+})(this, function(levels, async, redis, _) {
 
   var init = function(socket, store) {
 
@@ -35,7 +31,7 @@
         players,
         function(uuid, callback) {
           // only publish updates for players originating from this server
-          var player = game.levels.players[uuid];
+          var player = levels.players[uuid];
 
           if (player) {
             updatePlayer(store, data, uuid, player, callback);
@@ -65,7 +61,7 @@
         npcs,
         function(uuid, callback) {
           // only publish updates for NPCs originating from this server
-          var npc = game.levels.npcs[uuid];
+          var npc = levels.npcs[uuid];
 
           if (npc) {
             updateNPC(store, data, npc, uuid, callback);
