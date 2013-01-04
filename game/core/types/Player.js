@@ -48,8 +48,10 @@
     }
 
     // input queue
-    this.queue = []
-    this.processed = [];
+    this.queue = [];
+
+    // most recent acknowledged command
+    this.ack = 0;
 
     return this;
 	};

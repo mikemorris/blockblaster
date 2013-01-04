@@ -12,9 +12,6 @@
   // commands to be processed
   var queue = [];
 
-  // processed command ids for client ack
-  var processed = [];
-
   var init = function(socket, store) {
     // init physics loop, fixed time step in milliseconds
     setInterval((function() {
@@ -26,6 +23,7 @@
 
   var updateMissiles = function(store, missiles) {
     var checkCollisions = function(missile) {
+      // TODO: check collisions against ALL npcs, not just on this server
       var keys = Object.keys(levels.npcs);
       var length = keys.length;
       var key;
@@ -46,6 +44,7 @@
               store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
             }
           });
+
           npc.destroy();
         }
       }
@@ -175,8 +174,12 @@
             player.ship.fireButtonReleased = true;
           }
 
-          // shift ack state to queue
-          player.processed.push(move.seq);
+          // update ack
+          if (move.seq > player.ack) {
+            store.hset('player:' + player.uuid, 'ack', move.seq, function(err, res) {
+              player.ack = res;
+            });
+          }
 
           // if queue empty, stop looping
           if (!player.queue.length) return;
@@ -189,7 +192,6 @@
 
   return {
     queue: queue,
-    processed: processed,
     init: init,
     updateMissiles: updateMissiles,
     updateNPCs: updateNPCs,
