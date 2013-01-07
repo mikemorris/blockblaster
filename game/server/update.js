@@ -2,13 +2,14 @@
   if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
+      require('./players'),
       require('./levels'),
       require('async'),
       require('redis'),
       require('underscore')
     );
   }
-})(this, function(levels, async, redis, _) {
+})(this, function(players, levels, async, redis, _) {
 
   var init = function(socket, store) {
 
@@ -21,23 +22,22 @@
 
   };
 
-  var updatePlayers = function(store, data, callback) {
+  var updatePlayers = function(socket, store, data, callback) {
 
     store.smembers('player', function(err, res) {
-      var players = res;
-      var length = players.length;
-
       async.forEach(
-        players,
+        res,
         function(uuid, callback) {
-          // only publish updates for players originating from this server
-          var player = levels.players[uuid];
+          // publish delta updates for all players
+          // to all players connected to this server
+          var player = players.global[uuid];
 
           if (player) {
-            updatePlayer(store, data, uuid, player, callback);
+            players.getDelta(store, data, uuid, player, callback);
           } else {
-            // notify async.forEach that function has completed
-            if (typeof callback === 'function') callback();
+            // TODO: add player to global set
+            console.log('players.add', uuid, Date.now());
+            players.add(store, socket, uuid, callback);
           }
         }, function() {
           // notify async that iterator has completed
@@ -275,7 +275,7 @@
     // server time stamp
     data.time = Date.now();
 
-    // console.log(data);
+    console.log(data);
 
     /*
     var keys = Object.keys(data.players);
@@ -304,7 +304,7 @@
 
     // get updated states from redis, then return delta object to client
     async.parallel([
-      function(callback) { updatePlayers(store, data, callback) },
+      function(callback) { updatePlayers(socket, store, data, callback) },
       function(callback) { updateNPCs(store, data, callback) }
     ], function() {
       update(socket, data);

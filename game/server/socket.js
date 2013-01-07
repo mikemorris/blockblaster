@@ -2,6 +2,7 @@
   if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
+      require('./players'),
       require('./levels'),
       require('../core/types/Player'),
       require('async'),
@@ -11,7 +12,7 @@
       require('../../config')
     );
   }
-})(this, function(levels, Player, async, redis, sio, uuid, config) {
+})(this, function(players, levels, Player, async, redis, sio, uuid, config) {
 
   var init = function(app, channel) {
     var RedisStore = sio.RedisStore;
@@ -99,7 +100,7 @@
 
       socket.on('command:send', function (command) {
         // add to server physics queue instead of immeadiately publishing
-        levels.players[socket.uuid].queue.push(command);
+        players.global[socket.uuid].queue.push(command);
       })
       .on('disconnect', function() {
         var uuid = socket.uuid;
@@ -117,7 +118,8 @@
               rc.quit();
 
               // remove player from server
-              delete levels.players[uuid];
+              console.log('players:remove', uuid);
+              players.remove(uuid);
 
               // emit player:destroy event to client
               io.sockets.emit('players:remove', uuid);
@@ -134,8 +136,10 @@
 
   var addPlayer = function(io, socket, rc, player) {
 
+    console.log('addPlayer');
     // add player to server object
-    levels.players[socket.uuid] = player;
+    players.global[socket.uuid] = player;
+    players.local.push(socket.uuid);
 
     // init data object and attach player uid
     var data = {};
@@ -147,20 +151,23 @@
     // only send new player to existing connections
     io.sockets.emit('players:add', data);
 
-    var players = {};
+    data = {};
 
-    var keys = Object.keys(levels.players);
+    var keys = Object.keys(players.global);
+    var length = keys.length;
+    console.log('players.global', keys);
+
     var key;
     var player;
 
-    for (var i = 0; i < keys.length; i++) {
+    for (var i = 0; i < length; i++) {
       key = keys[i];
-      player = levels.players[key];
-      players[key] = player.getState();
+      player = players.global[key];
+      data[key] = player.getState();
     }
 
     // send full player list to new connection
-    io.sockets.socket(socket.id).emit('players', players);
+    io.sockets.socket(socket.id).emit('players', data);
     io.sockets.socket(socket.id).emit('npcs', levels.npcs);
 
   };

@@ -2,10 +2,11 @@
   if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
+      require('./players.js'),
       require('./levels.js')
     );
   }
-})(this, function(levels) {
+})(this, function(players, levels) {
 
   var init = function(socket, store) {
     setInterval((function() {
@@ -45,6 +46,12 @@
             .del(set + ':' + id)
             .zrem('expire', item)
             .exec(function(err, res) {
+              if (set === 'player') {
+                console.log('players:remove', id);
+                players.remove(id);
+                socket.io.sockets.emit('players:remove', id);
+              }
+              
               socket.destroyChildren(store, id);
             });
         })(set, id);

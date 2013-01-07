@@ -4,10 +4,11 @@
     module.exports = factory(
       require('../core/core'),
       require('../core/time'),
+      require('./players'),
       require('./levels')
     );
   }
-})(this, function(core, time, levels) {
+})(this, function(core, time, players, levels) {
 
   // commands to be processed
   var queue = [];
@@ -117,15 +118,16 @@
     this.updateNPCs(socket, store);
 
     // TODO: process input inside player loop
-    var players = Object.keys(levels.players);
-    var length = players.length;
-    var uuid;
+    var keys = players.local;
+    var length = keys.length;
+
+    var key;
     var player;
 
     // set position authoritatively for all players
     for (var i = 0; i < length; i++) {
-      uuid = players[i];
-      player = levels.players[uuid];
+      key = keys[i];
+      player = players.global[key];
 
       this.updateMissiles(store, player.ship.missiles);
 
@@ -176,7 +178,7 @@
 
           // update ack
           if (move.seq > player.ack) {
-            store.hset('player:' + player.uuid, 'ack', move.seq, function(err, res) {
+            store.hset('player:' + uuid, 'ack', move.seq, function(err, res) {
               player.ack = res;
             });
           }
@@ -185,7 +187,7 @@
           if (!player.queue.length) return;
           iterate(player, uuid, player.queue.shift());
         });
-      })(player, uuid, player.queue.shift());
+      })(player, key, player.queue.shift());
     }
 
   }

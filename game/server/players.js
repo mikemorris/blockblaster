@@ -2,12 +2,13 @@
   if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
+      require('../core/types/Player'),
       require('async'),
       require('redis'),
       require('underscore')
     );
   }
-})(this, function(async, redis, _) {
+})(this, function(Player, async, redis, _) {
 
   // TODO: abstract into entities?
 
@@ -56,7 +57,7 @@
 
     // update ack
     if (move.seq > player.ack) {
-      store.hset('player:' + player.uuid, 'ack', move.seq, function(err, res) {
+      store.hset('player:' + uuid, 'ack', move.seq, function(err, res) {
         player.ack = res;
       });
     }
@@ -64,11 +65,13 @@
   };
 
   var remove = function(uuid) {
-    players.local = _.filter(players.local, function(player) {
+    console.log('remove:uuid', uuid);
+
+    this.local = _.filter(this.local, function(player) {
       return player !== uuid;
     });
 
-    delete players.global[uuid];
+    delete this.global[uuid];
   };
 
   var delta = function(store, data, callback) {
@@ -88,10 +91,7 @@
             getDelta(store, data, uuid, player, callback);
           } else {
             // TODO: add player to global set on this server
-            // add(data, uuid, callback);
-
-            // notify async.forEach that function has completed
-            if (typeof callback === 'function') callback();
+            add(data, uuid, callback);
           }
         }, function() {
           // notify calling function that iterator has completed
@@ -117,9 +117,6 @@
       // some scope issues with iterating over res and updating values individually?
       var next = player.state = res || {};
 
-      // set ack from redis
-      delta.ack = next.ack;
-
       // init delta array for changed keys
       var deltaKeys = [];
 
@@ -143,6 +140,8 @@
       }
       
       store.hgetall('ship:' + player.ship.uuid, function(err, res) {
+
+        console.log(player.ship.uuid, res);
 
         // save reference to old values and update state
         var prev = player.ship.state;
@@ -248,36 +247,15 @@
 
   };
 
-  var addPlayer = function(io, socket, rc, player) {
+  var add = function(store, socket, uuid, callback) {
 
-    // add player to server object
-    levels.players[socket.uuid] = player;
+    store.hgetall('player:' + uuid, function(err, res) {
+      // init player and add to global object
+      this.global[uuid] = new Player(res);
 
-    // init data object and attach player uid
-    var data = {};
-    data.uuid = socket.uuid;
-
-    // init player
-    data.player = player.getState();
-
-    // only send new player to existing connections
-    io.sockets.emit('players:add', data);
-
-    var players = {};
-
-    var keys = Object.keys(levels.players);
-    var key;
-    var player;
-
-    for (var i = 0; i < keys.length; i++) {
-      key = keys[i];
-      player = levels.players[key];
-      players[key] = player.getState();
-    }
-
-    // send full player list to new connection
-    io.sockets.socket(socket.id).emit('players', players);
-    io.sockets.socket(socket.id).emit('npcs', levels.npcs);
+      // notify async.forEach that function has completed
+      if (typeof callback === 'function') callback();
+    });
 
   };
 
@@ -423,7 +401,9 @@
   return {
     global: global,
     local: local,
-    update: update
+    add: add,
+    remove: remove,
+    getDelta: getDelta
   };
 
 });
