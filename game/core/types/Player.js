@@ -18,7 +18,7 @@
 		this.ship = new Ship();
 
     // init from existing state
-    if (player) {
+    if (player && player.ship && player.ship.state) {
       var keys = Object.keys(player.ship.state);
       var length = keys.length;
       var key;

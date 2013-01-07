@@ -4,9 +4,11 @@
     dir: "public/js/game",
     removeCombined: true,
     fileExclusionRegExp: /(^\.)|(server)/,
-    modules: [
+    modules: []
+  /*
       {
         name: "init"
       }
     ]
+    */
 })

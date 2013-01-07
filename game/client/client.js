@@ -30,6 +30,7 @@
     var socket = this.socket = io.connect();
 
     socket.on('players', function(data) {
+
       var players = Object.keys(data);
       var length = players.length;
       var uuid;
@@ -180,6 +181,8 @@
 
               }
 
+            } else {
+              client.players[uuid] = new Player(player);
             }
 
           }
