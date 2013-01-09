@@ -5,10 +5,10 @@
       require('../core/core'),
       require('../core/time'),
       require('./players'),
-      require('./levels')
+      require('./npcs')
     );
   }
-})(this, function(core, time, players, levels) {
+})(this, function(core, time, players, npcs) {
 
   // commands to be processed
   var queue = [];
@@ -25,14 +25,14 @@
   var updateMissiles = function(store, missiles) {
     var checkCollisions = function(missile) {
       // TODO: check collisions against ALL npcs, not just on this server
-      var keys = Object.keys(levels.npcs);
+      var keys = Object.keys(npcs.global);
       var length = keys.length;
       var key;
       var npc;
 
       for (var i = length; i--;) {
         key = keys[i];
-        npc = levels.npcs[key];
+        npc = npcs.global[key];
 
         if(core.isCollision(npc, missile)) {
           missile.explode(store, function(uuid, delta) {
@@ -46,7 +46,16 @@
             }
           });
 
-          npc.destroy();
+          npc.destroy(store, function(uuid, delta) {
+            var keys = Object.keys(delta);
+            var length = keys.length;
+            var key;
+
+            for (var i = 0; i < length; i++) {
+              key = keys[i];
+              store.hset('npc:' + uuid, key, delta[key], function(err, res) {});
+            }
+          });
         }
       }
     };
@@ -75,16 +84,16 @@
   };
 
   var updateNPCs = function(socket, store) {
-    var keys = Object.keys(levels.npcs);
+    var keys = npcs.local;
     var length = keys.length;
 
     for (var i = 0; i < length; i++) {
       (function(i) {
         var uuid = keys[i];
-        var npc = levels.npcs[uuid];
+        var npc = npcs.global[uuid];
 
         if(npc.isDestroyed) {
-          delete levels.npcs[uuid];
+          npcs.remove(uuid);
 
           store.multi()
             .srem('npc', uuid)

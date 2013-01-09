@@ -76,9 +76,8 @@
       });
 
       socket.on('npc:destroy', function(uuid) {
-        // TODO: cleanup, remove from canvas
-        // delete game.npcs[uuid];
-        client.npcs[uuid].destroy();
+        // cleanup, remove from canvas
+        delete client.npcs[uuid];
       });
     });
 

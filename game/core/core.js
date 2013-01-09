@@ -98,10 +98,15 @@
   };
 
   var isCollision = function(a, b) {
-    return  a.x <= (b.x + b.width) &&
-        b.x <= (a.x + a.width) &&
-        a.y <= (b.y + b.height) &&
-        b.y <= (a.y + a.height);
+    var ax = parseInt(a.state.x);
+    var ay = parseInt(a.state.y);
+    var bx = parseInt(b.state.x);
+    var by = parseInt(b.state.y);
+
+    return  ax <= (bx + b.width) &&
+        bx <= (ax + a.width) &&
+        ay <= (by + b.height) &&
+        by <= (ay + a.height);
   };
 
   var loadScene = function(name) {

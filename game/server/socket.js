@@ -3,7 +3,7 @@
     // Node.js
     module.exports = factory(
       require('./players'),
-      require('./levels'),
+      require('./npcs'),
       require('../core/types/Player'),
       require('async'),
       require('redis'),
@@ -12,7 +12,7 @@
       require('../../config')
     );
   }
-})(this, function(players, levels, Player, async, redis, sio, uuid, config) {
+})(this, function(players, npcs, Player, async, redis, sio, uuid, config) {
 
   var init = function(app, channel) {
     var RedisStore = sio.RedisStore;
@@ -118,7 +118,6 @@
               rc.quit();
 
               // remove player from server
-              console.log('players:remove', uuid);
               players.remove(uuid);
 
               // emit player:destroy event to client
@@ -136,7 +135,6 @@
 
   var addPlayer = function(io, socket, rc, player) {
 
-    console.log('addPlayer');
     // add player to server object
     players.global[socket.uuid] = player;
     players.local.push(socket.uuid);
@@ -155,7 +153,6 @@
 
     var keys = Object.keys(players.global);
     var length = keys.length;
-    console.log('players.global', keys);
 
     var key;
     var player;
@@ -168,7 +165,7 @@
 
     // send full player list to new connection
     io.sockets.socket(socket.id).emit('players', data);
-    io.sockets.socket(socket.id).emit('npcs', levels.npcs);
+    io.sockets.socket(socket.id).emit('npcs', npcs.global);
 
   };
 
