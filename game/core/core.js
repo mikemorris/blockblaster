@@ -31,6 +31,8 @@
     _time = (Math.max(0, Math.min(1, _time)));
     position = (_prev + (_time * (_next - _prev)));
 
+    if (isNaN(position)) debugger;
+
     return position;
   };
 
@@ -98,6 +100,9 @@
   };
 
   var isCollision = function(a, b) {
+    // TODO: logging for error state
+    if (!a.state) console.log(a);
+
     var ax = parseInt(a.state.x);
     var ay = parseInt(a.state.y);
     var bx = parseInt(b.state.x);

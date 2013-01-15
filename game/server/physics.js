@@ -130,13 +130,13 @@
     var keys = players.local;
     var length = keys.length;
 
-    var key;
+    var uuid;
     var player;
 
     // set position authoritatively for all players
     for (var i = 0; i < length; i++) {
-      key = keys[i];
-      player = players.global[key];
+      uuid = keys[i];
+      player = players.global[uuid];
 
       this.updateMissiles(store, player.ship.missiles);
 
@@ -144,6 +144,7 @@
       if (!player.queue.length) continue;
 
       (function iterate(player, uuid, move) {
+
         process.nextTick(function() {
           var vector;
           var vx;
@@ -196,7 +197,7 @@
           if (!player.queue.length) return;
           iterate(player, uuid, player.queue.shift());
         });
-      })(player, key, player.queue.shift());
+      })(player, uuid, player.queue.shift());
     }
 
   }

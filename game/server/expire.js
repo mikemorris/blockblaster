@@ -19,7 +19,7 @@
   var loop = function(socket, store) {
 
     // purge expired set members and keys from redis
-    store.zrangebyscore('expire', 0, Date.now() - 1000, function(err, res) {
+    store.zrangebyscore('expire', 0, Date.now() - 2000, function(err, res) {
       var items = res;
       var length = items.length;
 
@@ -46,11 +46,6 @@
             .del(set + ':' + id)
             .zrem('expire', item)
             .exec(function(err, res) {
-              if (set === 'player') {
-                players.remove(id);
-                socket.io.sockets.emit('players:remove', id);
-              }
-              
               socket.destroyChildren(store, id);
             });
         })(set, id);

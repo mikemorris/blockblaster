@@ -15,6 +15,7 @@
 
   // constructor
 	var Player = function(player) {
+
 		this.ship = new Ship();
 
     // init from existing state
