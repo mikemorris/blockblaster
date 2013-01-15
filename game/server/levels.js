@@ -9,7 +9,7 @@
   }
 })(this, function(npcs, Enemy, async) {
 
-  var loadEnemies = function(socket, store) {
+  var loadEnemies = function(store) {
 
     var enemies = [
       new Enemy(100, 25),
@@ -46,8 +46,6 @@
             // add npc to server object
             npcs.global[uuid] = npc;
             npcs.local.push(uuid);
-
-            socket.io.sockets.emit('npc:add', npc.getState());
 
             // notify async.forEach that function has completed
             if (typeof callback === 'function') callback();

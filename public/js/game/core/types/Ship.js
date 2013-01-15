@@ -1,1 +1,282 @@
-(function(e,t){typeof exports=="object"?module.exports=t(require("../core"),require("../time"),require("../../client/input"),require("./Entity"),require("./Missile"),undefined,require("node-uuid")):typeof define=="function"&&define.amd&&define(["../core","../time","../../client/input","./Entity","./Missile","./Image"],t)})(this,function(e,t,n,r,i,s,o){var u=function(e){this.uuid=o?o.v4():!1,this.set(e),this.setDefaults(),this.loadMissiles(),this.queue={},this.queue.server=[],this.server={}};return u.prototype=new r,u.prototype.setDefaults=function(){this.fireButtonReleased=!0,this.image=s?new s("images/ship.png"):!1,this.missiles=[],this.now=0,this.then=0,this.height=50,this.width=50;var e={x:20,y:380,vx:0,speed:this.speed||300,maxMissiles:this.maxMissiles||3,repeatRate:this.repeatRate||30};this.set(e)},u.prototype.respondToInput=function(n,r){var i=e.getVelocity(r),s=!1,o;this.vx=parseInt(this.speed*t.delta*i.dx),r.spacebar?this.fire():(this.fireButtonReleased||(s=!0),this.fireButtonReleased=!0);if(this.vx||r.spacebar||s)o={time:Date.now(),seq:n.seq++,input:r,data:{speed:this.speed,vector:i}},n.queue.input.push(o),n.socket.emit("command:send",o)},u.prototype.move=function(){this.sx?(this.sx+=this.vx,this.queue.server.push(this),this.queue.server.length>=e.buffersize&&this.queue.server.splice(0,this.queue.server.length-e.buffersize)):this.x+=this.vx},u.prototype.reconcile=function(e,n){var r=0,i=0,s=e.queue.input=e.queue.input.filter(function(e,n,r){return e.seq==this.ack&&(t.latency=(Date.now()-e.time)/1e3),e.seq>this.ack}.bind(this));for(var o=0;o<s.length;o++)r+=parseInt(s[o].data.speed*s[o].data.vector.dx*t.delta);this.sx=parseInt(n.ship.state.x)+r},u.prototype.interpolate=function(){var n=Math.abs(this.sx-this.x);if(!this.queue.server.length)return;if(n<.1||n>200){this.x=this.sx;return}var r,i,s,o,u=this.queue.server.length-1,a,f;for(var l=0;l<u;l++){a=this.queue.server[l],f=this.queue.server[l+1];if(t.client>a.time&&t.client<f.time){s=a,o=f;break}}s||(s=o=this.queue.server[this.queue.server.length-1]);var c=0;if(s.time!==o.time){var n=s.time-t.client,h=s.time-o.time;c=n/h}r=e.lerp(o.sx,s.sx,c),this.x=e.lerp(this.x,r,t.delta*e.smoothing)},u.prototype.loadMissiles=function(){var e=0;while(e<this.maxMissiles)this.missiles.push(new i(this)),e++},u.prototype.fire=function(e,n){this.now=t.now;var r=(this.now-this.then)/1e3,i=Object.keys(this.missiles),s=i.length,o,u=[],a;for(var f=0;f<s;f++)o=i[f],a=this.missiles[o],a.isLive||u.push(a);var l=u.length>0,c=r>1/this.repeatRate,h=c&&l&&this.fireButtonReleased;h&&(this.fireButtonReleased=!1,u[0].fire(e,n),this.then=this.now)},u.prototype.drawType=function(t){e.debug&&(t.ctx.fillStyle="rgba(0, 0, 255, 0.25)",t.ctx.fillRect(0,0,this.width,this.height),t.ctx.fill()),this.image.draw(t)},u.prototype.die=function(){console.log("die!")},u.prototype.getState=function(){var e=[];for(var t=0;t<this.missiles.length;t++)e.push(this.missiles[t].getState());return{uuid:this.uuid,state:this.state,missiles:e}},u});
+(function(root, factory) {
+  if (typeof exports === 'object') {
+    // Node.js
+    module.exports = factory(
+      require('../core'),
+      require('../time'),
+      require('../../client/input'),
+      require('./Entity'),
+      require('./Missile'),
+      undefined,
+      require('node-uuid')
+    );
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(['../core', '../time', '../../client/input', './Entity', './Missile', './Image'], factory);
+  }
+})(this, function(core, time, input, Entity, Missile, Image, uuid) {
+
+	var Ship = function(properties) {
+
+    this.uuid = uuid ? uuid.v4() : false;
+
+		this.set(properties);
+		this.setDefaults();
+		this.loadMissiles();
+
+    // interpolation queue
+    this.queue = {};
+    this.queue.server = [];
+
+    // interpolation target
+    this.server = {};
+
+	};
+
+	Ship.prototype = new Entity();
+
+	Ship.prototype.setDefaults = function() {
+		this.fireButtonReleased = true;
+		this.image = Image ? new Image('images/ship.png') : false,
+		this.missiles = [];
+		this.now = 0;
+		this.then = 0;
+		this.height = 50;
+		this.width = 50;
+
+		var properties = {
+      x: 20,
+      y: 380,
+      vx: 0,
+
+      // user defineable settings
+      speed: this.speed || 300,
+      maxMissiles: this.maxMissiles || 3,
+      repeatRate: this.repeatRate || 30
+    };
+
+    this.set(properties);
+	};
+
+	Ship.prototype.respondToInput = function(client, pressed) {
+
+    var vector = core.getVelocity(pressed);
+    var fireButtonChanged = false;
+    var input;
+
+    this.vx = parseInt(this.speed * time.delta * vector.dx);
+
+		if(pressed.spacebar) {
+			this.fire();
+		} else {
+      if (!this.fireButtonReleased) {
+        fireButtonChanged = true;
+      }
+
+			this.fireButtonReleased = true;
+		}
+
+    if (this.vx || pressed.spacebar || fireButtonChanged) {
+
+      // create input object
+      input = {
+        time: Date.now(),
+        seq: client.seq++,
+        input: pressed,
+        data: {
+          speed: this.speed,
+          vector: vector
+        }
+      };
+
+      // add input to queue, then send to server
+      client.queue.input.push(input);
+      client.socket.emit('command:send', input);
+    }
+
+	};
+
+	Ship.prototype.move = function() {
+
+    if (this.sx) {
+
+      // update reconciled position
+      this.sx += this.vx;
+
+      // queue reconciled position for entity interpolation
+      this.queue.server.push(this);
+      
+      // splice array, keeping BUFFER_SIZE most recent items
+      if (this.queue.server.length >= core.buffersize) {
+        this.queue.server.splice(0, this.queue.server.length - core.buffersize);
+      }
+
+    } else {
+      this.x += this.vx;
+    }
+
+	};
+
+  Ship.prototype.reconcile = function(client, player) {
+
+    // server reconciliation
+    var dx = 0;
+    var dy = 0;
+
+    // bind this inside filter to Ship
+    // remove most recent processed move and all older moves from queue
+    var queue = client.queue.input = client.queue.input.filter((function(el, index, array) {
+
+      // loose comparison necessary?
+      if (el.seq == this.ack) {
+        // TODO: moving average?
+        time.latency = (Date.now() - el.time) / 1000;
+      }
+
+      return el.seq > this.ack;
+
+    }).bind(this));
+
+    // update reconciled position with client prediction
+    // server position plus delta of unprocessed input
+    for (var i = 0; i < queue.length; i++) {
+      dx += parseInt(queue[i].data.speed * queue[i].data.vector.dx * time.delta);
+    }
+
+    // set reconciled position
+    this.sx = parseInt(player.ship.state.x) + dx;
+
+  };
+
+  Ship.prototype.interpolate = function() {
+
+    // entity interpolation
+    var difference = Math.abs(this.sx - this.x);
+
+    // return if no server updates to process
+    if (!this.queue.server.length) return;
+
+    // snap if large difference
+    if (difference < 0.1 || difference > 200) {
+      this.x = this.sx;
+      return;
+    }
+
+    var x;
+    var vx;
+
+    var target
+    var current;
+
+    var count = this.queue.server.length - 1;
+
+    var prev;
+    var next;
+
+    for(var i = 0; i < count; i++) {
+      prev = this.queue.server[i];
+      next = this.queue.server[i + 1];
+
+      // if client offset time is between points, set target and break
+      if(time.client > prev.time && time.client < next.time) {
+        target = prev;
+        current = next;
+        break;
+      }
+    }
+
+    // no interpolation target found, snap to most recent state
+    if(!target) {
+      target = current = this.queue.server[this.queue.server.length - 1];
+    }
+
+    // calculate client time percentage between current and target points
+    var timePoint = 0;
+
+    if (target.time !== current.time) {
+      var difference = target.time - time.client;
+      var spread = target.time - current.time;
+      timePoint = difference / spread;
+    }
+
+    // interpolated position
+    x = core.lerp(current.sx, target.sx, timePoint);
+
+    // apply smoothing
+    this.x = core.lerp(this.x, x, time.delta * core.smoothing);
+
+  };
+
+	Ship.prototype.loadMissiles = function() {
+		for (var i = 0; i < this.maxMissiles; i++) {
+			this.missiles.push(new Missile(this));
+		}
+	};
+
+	Ship.prototype.fire = function(store, callback) {
+
+		this.now = time.now;
+		var fireDelta = (this.now - this.then) / 1000;
+
+    // filter by isLive
+    var keys = Object.keys(this.missiles);
+    var length = keys.length;
+    var key;
+
+    var missiles = [];
+    var missile;
+
+    for (var i = 0; i < length; i++) {
+      key = keys[i];
+      missile = this.missiles[key];
+
+      if (!missile.isLive) {
+        missiles.push(missile);
+      }
+    }
+
+		var missilesLoaded = missiles.length > 0;
+		var gunIsCool = fireDelta > 1 / this.repeatRate;
+		var readyToFire = gunIsCool && missilesLoaded && this.fireButtonReleased;
+
+		if(readyToFire) {
+			this.fireButtonReleased = false;
+			missiles[0].fire(store, callback);
+			this.then = this.now;
+		}
+
+	};
+
+	Ship.prototype.drawType = function(client) {
+		if(core.debug) {
+			// Show hit-area
+			client.ctx.fillStyle = 'rgba(0, 0, 255, 0.25)';
+			client.ctx.fillRect(0,0,this.width, this.height);
+			client.ctx.fill();
+		}
+		this.image.draw(client);
+	},
+
+	Ship.prototype.die = function() {
+		console.log('die!');
+	};
+
+	Ship.prototype.getState = function() {
+    // init missiles
+    var missiles = [];
+
+    // iterate over missiles
+    for (var i = 0; i < this.missiles.length; i++) {
+      missiles.push(this.missiles[i].getState());
+    }
+
+    return {
+      uuid: this.uuid,
+      state: this.state,
+      missiles: missiles
+    };
+  };
+
+  return Ship;
+
+});

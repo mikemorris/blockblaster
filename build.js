@@ -4,6 +4,7 @@
     dir: "public/js/game",
     removeCombined: true,
     fileExclusionRegExp: /(^\.)|(server)/,
+    optimize: "none",
     modules: []
   /*
       {

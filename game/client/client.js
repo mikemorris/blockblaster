@@ -29,56 +29,48 @@
     // socket.io client connection
     var socket = this.socket = io.connect();
 
-    socket.on('players', function(data) {
+    socket.on('state:full', function(data) {
 
-      var players = Object.keys(data);
-      var length = players.length;
       var uuid;
 
-      // wipe old data from game.players
-      client.players = {};
+      // TODO: DRY this up?
+      var players = _.union(Object.keys(client.players), Object.keys(data.players));
+      var player;
 
-      // init players using data from server
-      for (var i = 0; i < length; i++) {
+      // iterate over union of client and server players
+      for (var i = 0; i < players.length; i++) {
         uuid = players[i];
-        client.players[uuid] = new Player(data[uuid]);
+
+        player = data.players[uuid];
+        if (player && client.players[uuid]) {
+          // TODO: if defined on server and client, update state
+        } else if (player) {
+          // if defined on server but not on client, create new Player on client
+          client.players[uuid] = new Player(player);
+        } else {
+          delete client.players[uuid];
+        }
       }
 
-      // bind add/remove listeners after init
-      socket.on('players:add', function(data) {
-        client.players[data.uuid] = new Player(data.player);
-      });
-
-      socket.on('players:remove', function(uuid) {
-        delete client.players[uuid];
-      });
-    });
-
-    socket.on('npcs', function(data) {
-      var npcs = Object.keys(data);
-      var length = npcs.length;
-      var uuid;
+      // TODO: DRY this up?
+      var npcs = _.union(Object.keys(client.npcs), Object.keys(data.npcs));
       var npc;
 
-      // wipe old data from game.npcs
-      client.npcs = {};
+      // iterate over union of client and server players
+      for (var j = 0; j < npcs.length; j++) {
+        uuid = npcs[j];
 
-      // init NPCs using data from server
-      for (var i = 0; i < length; i++) {
-        uuid = npcs[i];
-        npc = data[uuid];
-        client.npcs[uuid] = new Enemy(npc.x, npc.y, npc.direction);
+        npc = data.npcs[uuid];
+        if (npc && client.npcs[uuid]) {
+          // TODO: if defined on server and client, update state
+        } else if (npc) {
+          // if defined on server but not on client, create new NPC on client
+          client.npcs[uuid] = new Enemy(parseInt(npc.x), parseInt(npc.y), parseInt(npc.direction));
+        } else {
+          delete client.npcs[uuid];
+        }
       }
 
-      // bind add/remove listeners after init
-      socket.on('npc:add', function(npc) {
-        client.npcs[npc.uuid] = new Enemy(npc.state.x, npc.state.y, npc.state.direction);
-      });
-
-      socket.on('npc:destroy', function(uuid) {
-        // cleanup, remove from canvas
-        delete client.npcs[uuid];
-      });
     });
 
     // set socket.uid before processing updates
@@ -140,7 +132,7 @@
 
               }
 
-              if (player.ship.missiles) {
+              if (Object.keys(client_player.ship.missiles) && player.ship.missiles) {
 
                 // update missiles
                 var missiles = player.ship.missiles;
@@ -163,19 +155,21 @@
                     return uuid === key;
                   });
 
-                  if (serverMissile.state.y) {
-                    clientMissile.sy = parseInt(serverMissile.state.y);
-                  }
+                  if (clientMissile) {
+                    if (serverMissile.state.y) {
+                      clientMissile.sy = parseInt(serverMissile.state.y);
+                    }
 
-                  if (serverMissile.state.x) {
-                    clientMissile.x = parseInt(serverMissile.state.x);
-                  }
+                    if (serverMissile.state.x) {
+                      clientMissile.x = parseInt(serverMissile.state.x);
+                    }
 
-                  if (serverMissile.state.isLive) {
-                    clientMissile.isLive = (serverMissile.state.isLive === 'true');
-                  }
+                    if (serverMissile.state.isLive) {
+                      clientMissile.isLive = (serverMissile.state.isLive === 'true');
+                    }
 
-                  clientMissile.queue.server.push(serverMissile);
+                    clientMissile.queue.server.push(serverMissile);
+                  }
                 }
 
               }

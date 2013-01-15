@@ -72,29 +72,59 @@
     delete this.global[uuid];
   };
 
-  var delta = function(store, data, callback) {
+  var state = function(store, data, callback) {
 
     // TODO: pass in set name as argument
-    store.smembers('npc', function(err, res) {
+    store.smembers('npc', (function(err, res) {
 
       async.forEach(
         res,
-        function(uuid, callback) {
-          // get delta for all npcs
-          var npc = npcs.global[uuid];
+        (function(uuid, callback) {
+          // get delta for all players
+          var npc = this.global[uuid];
 
           if (npc) {
-            getDelta(store, data, uuid, npc, callback);
+            data.npcs[uuid] = npc.getState();
+
+            // notify async.forEach that function has completed
+            if (typeof callback === 'function') callback();
           } else {
-            // TODO: add npc to global set on this server
-            add(store, uuid, callback);
+            // add player to global object
+            add(store, data, this.global, uuid, callback);
           }
-        }, function() {
+        }).bind(this), function() {
           // notify calling function that iterator has completed
           if (typeof callback === 'function') callback();
         }
       );
-    });
+    }).bind(this));
+
+  };
+
+  var delta = function(store, data, callback) {
+
+    // TODO: pass in set name as argument
+    store.smembers('npc', (function(err, res) {
+
+      async.forEach(
+        res,
+        (function(uuid, callback) {
+          // get delta for all npcs
+          var npc = this.global[uuid];
+
+          if (npc) {
+            getDelta(store, data, uuid, npc, callback);
+          } else {
+            // add player to global object
+            add(store, data, this.global, uuid, callback);
+          }
+        }).bind(this), function() {
+          // notify calling function that iterator has completed
+          if (typeof callback === 'function') callback();
+        }
+      );
+
+    }).bind(this));
 
   };
 
@@ -109,62 +139,62 @@
       // some scope issues with iterating over res and updating values individually?
       var next = npc.state = res;
 
-      // init delta array for changed keys
-      var delta = [];
+      if (next) {
+        // init delta array for changed keys
+        var delta = [];
 
-      // iterate over new values and compare to old
-      var keys = Object.keys(next);
-      var length = keys.length;
-      var key;
+        // iterate over new values and compare to old
+        var keys = Object.keys(next);
+        var length = keys.length;
+        var key;
 
-      for (var i = 0; i < length; i++) {
-        key = keys[i];
+        for (var i = 0; i < length; i++) {
+          key = keys[i];
 
-        // check for changed values and push key to delta array
-        if (prev[key] !== next[key]) {
-          delta.push(key);
+          // check for changed values and push key to delta array
+          if (prev[key] !== next[key]) {
+            delta.push(key);
 
-          if (key === 'vy') {
-            this.global[uuid].vy = next[key];
-          }
+            if (key === 'vy') {
+              npc.vy = next[key];
+            }
 
-          if (key === 'isHit') {
-            this.global[uuid].isHit = true;
+            if (key === 'isHit') {
+              npc.isHit = true;
+            }
           }
         }
+
+        // set changed values in data object
+        if (delta.length) {
+          data.npcs[uuid] = _.pick(next, delta);
+        }
+
+        // expire all NPCs to clean redis on server crash
+        store.zadd('expire', Date.now(), 'npc+' + uuid, function(err, res) {});
+
+        // notify async.forEach in updateNPCs that function has completed
+        if (typeof callback === 'function') callback();
+
       }
-
-      // set changed values in data object
-      if (delta.length) {
-        data.npcs[uuid] = _.pick(next, delta);
-      }
-
-      // expire all NPCs to clean redis on server crash
-      store.zadd('expire', Date.now(), 'npc+' + uuid, function(err, res) {});
-
-      // notify async.forEach in updateNPCs that function has completed
-      if (typeof callback === 'function') callback();
 
     }).bind(this));
 
   };
 
-  var add = function(store, uuid, callback) {
+  var add = function(store, data, global, uuid, callback) {
 
-    store.hgetall('npc:' + uuid, (function(err, res) {
+    store.hgetall('npc:' + uuid, function(err, res) {
       if (res) {
-        var npc = res;
-        var x = parseInt(npc.x);
-        var y = parseInt(npc.y);
-        var direction = parseInt(npc.direction);
-
         // init npc and add to global object
-        this.global[uuid] = new Enemy(x, y, direction, uuid);
+        var npc = global[uuid] = new Enemy(parseInt(res.x), parseInt(res.y), parseInt(res.direction), uuid);
+
+        data.npcs[uuid] = npc.getState();
       }
 
       // notify async.forEach that function has completed
       if (typeof callback === 'function') callback();
-    }).bind(this));
+    });
 
   };
 
@@ -312,6 +342,8 @@
     local: local,
     add: add,
     remove: remove,
+    state: state,
+    delta: delta,
     getDelta: getDelta
   };
 

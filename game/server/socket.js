@@ -21,16 +21,6 @@
     // turn off websocket debug spam
     io.set('log level', 1);
 
-    // socket.io config
-    io.configure(function() {
-      io.set('store', new RedisStore({
-        redis: redis,
-        redisPub: channel.pub,
-        redisSub: channel.sub,
-        redisClient: channel.store
-      }));
-    });
-
     listen(io);
 
     return {
@@ -184,6 +174,7 @@
           // init player state in redis
           rc.multi()
             .sadd('player', socket.uuid)
+            .hset('player:' + socket.uuid, 'ship', player.ship.uuid)
             .hset('parent', 'ship+' + player.ship.uuid, 'player+' + socket.uuid)
             .hmset('ship:' + player.ship.uuid, 
               'x', player.ship.x,

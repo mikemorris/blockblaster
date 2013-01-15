@@ -14,66 +14,17 @@
 
   var init = function(socket, store) {
 
-    // init server update loop, fixed time step in milliseconds
+    // init server full state update loop, fixed time step in milliseconds
     setInterval((function() {
       this.loop(socket, store);
+    }).bind(this), 1000);
+
+    // init server update deltaLoop, fixed time step in milliseconds
+    setInterval((function() {
+      this.deltaLoop(socket, store);
     }).bind(this), 45);
 
     return this;
-
-  };
-
-  var updatePlayers = function(socket, store, data, callback) {
-
-    store.smembers('player', function(err, res) {
-      async.forEach(
-        res,
-        function(uuid, callback) {
-          // publish delta updates for all players
-          // to all players connected to this server
-          var player = players.global[uuid];
-
-          if (player) {
-            players.getDelta(store, data, uuid, player, callback);
-          } else {
-            // add player to global object
-            players.add(store, socket, uuid, callback);
-          }
-        }, function() {
-          // notify async that iterator has completed
-          if (typeof callback === 'function') callback();
-        }
-      );
-    });
-
-  };
-
-  var updateNPCs = function(store, data, callback) {
-
-    // iterate over all npcs in redis
-    // TODO: should this just iterate over server NPCs instead?
-    store.smembers('npc', function(err, res) {
-
-      // don't return until all updateNPC calls have completed
-      async.forEach(
-        res,
-        function(uuid, callback) {
-          // publish delta updates for all npcs
-          // to all players connected to this server
-          var npc = npcs.global[uuid];
-
-          if (npc) {
-            npcs.getDelta(store, data, uuid, npc, callback);
-          } else {
-            // add player to global object
-            npcs.add(store, uuid, callback);
-          }
-        }, function() {
-          // notify async.parallel in loop that iterator has completed
-          if (typeof callback === 'function') callback();
-        }
-      );
-    });
 
   };
 
@@ -97,7 +48,7 @@
     */
 
     // return delta object to client
-    socket.io.sockets.emit('state:update', data);
+    socket.io.sockets.volatile.emit('state:update', data);
 
   };
 
@@ -111,8 +62,28 @@
 
     // get updated states from redis, then return delta object to client
     async.parallel([
-      function(callback) { updatePlayers(socket, store, data, callback) },
-      function(callback) { updateNPCs(store, data, callback) }
+      function(callback) { players.state(store, data, callback) },
+      function(callback) { npcs.state(store, data, callback) }
+    ], function() {
+      data.time = Date.now();
+      // console.log(data);
+      socket.io.sockets.volatile.emit('state:full', data);
+    });
+
+  };
+
+  var deltaLoop = function(socket, store) {
+
+    // create data object containing
+    // authoritative state and last processed input id
+    var data = {};
+    data.players = {};
+    data.npcs = {};
+
+    // get updated states from redis, then return delta object to client
+    async.parallel([
+      function(callback) { players.delta(store, data, callback); },
+      function(callback) { npcs.delta(store, data, callback); }
     ], function() {
       update(socket, data);
     });
@@ -121,9 +92,8 @@
 
   return {
     init: init,
-    updatePlayers: updatePlayers,
-    updateNPCs: updateNPCs,
-    loop: loop
+    loop: loop,
+    deltaLoop: deltaLoop
   };
 
 });

@@ -72,31 +72,59 @@
     delete this.global[uuid];
   };
 
-  var delta = function(store, data, callback) {
+  var state = function(store, data, callback) {
 
     // TODO: pass in set name as argument
-    store.smembers('player', function(err, res) {
-      var players = res;
-      var length = players.length;
+    store.smembers('player', (function(err, res) {
 
       async.forEach(
-        players,
-        function(uuid, callback) {
+        res,
+        (function(uuid, callback) {
           // get delta for all players
-          var player = players.global[uuid];
+          var player = this.global[uuid];
 
           if (player) {
-            getDelta(store, data, uuid, player, callback);
+            data.players[uuid] = player.getState();
+
+            // notify async.forEach that function has completed
+            if (typeof callback === 'function') callback();
           } else {
-            // TODO: add player to global set on this server
-            add(data, uuid, callback);
+            // add player to global object
+            add(store, data, this.global, uuid, callback);
           }
-        }, function() {
+        }).bind(this), function() {
           // notify calling function that iterator has completed
           if (typeof callback === 'function') callback();
         }
       );
-    });
+    }).bind(this));
+
+  };
+
+  var delta = function(store, data, callback) {
+
+    // TODO: pass in set name as argument
+    store.smembers('player', (function(err, res) {
+
+      async.forEach(
+        res,
+        (function(uuid, callback) {
+          // get delta for all players
+          var player = this.global[uuid];
+
+          if (player) {
+            getDelta(store, data, uuid, player, callback);
+          } else {
+            // add player to global object
+            add(store, data, this.global, uuid, callback);
+          }
+        }).bind(this), function() {
+          // notify calling function that iterator has completed
+          if (typeof callback === 'function') callback();
+        }
+      );
+
+    }).bind(this));
 
   };
 
@@ -137,7 +165,7 @@
         delta.state = _.pick(next, deltaKeys);
       }
       
-      store.hgetall('ship:' + player.ship.uuid, function(err, res) {
+      store.hgetall('ship:' + next.ship, function(err, res) {
 
         // save reference to old values and update state
         var prev = player.ship.state;
@@ -145,8 +173,8 @@
         // some scope issues with iterating over res and updating values individually?
         var next = player.ship.state = res;
 
-        // error thrown here if init hasn't finished
         if (next) {
+
           // init delta array for changed keys
           var deltaKeys = [];
 
@@ -185,28 +213,30 @@
                 // some scope issues with iterating over res and updating values individually?
                 var next = missile.state = res;
 
-                // init delta array for changed keys
-                var deltaKeys = [];
+                if (next) {
+                  // init delta array for changed keys
+                  var deltaKeys = [];
 
-                // iterate over new values and compare to old
-                var keys = Object.keys(next);
-                var length = keys.length;
-                var key;
+                  // iterate over new values and compare to old
+                  var keys = Object.keys(next);
+                  var length = keys.length;
+                  var key;
 
-                for (var i = 0; i < length; i++) {
-                  key = keys[i];
+                  for (var i = 0; i < length; i++) {
+                    key = keys[i];
 
-                  // check for changed values and push key to deltaKeys array
-                  if (prev[key] !== next[key]) {
-                    deltaKeys.push(key);
+                    // check for changed values and push key to deltaKeys array
+                    if (prev[key] !== next[key]) {
+                      deltaKeys.push(key);
+                    }
                   }
-                }
 
-                // set changed values in data object
-                if (deltaKeys.length) {
-                  var deltaMissile = {};
-                  deltaMissile.state = _.pick(next, deltaKeys);
-                  missiles[missile.uuid] = deltaMissile;
+                  // set changed values in data object
+                  if (deltaKeys.length) {
+                    var deltaMissile = {};
+                    deltaMissile.state = _.pick(next, deltaKeys);
+                    missiles[missile.uuid] = deltaMissile;
+                  }
                 }
 
                 // notify async.forEach that iterator has completed
@@ -227,6 +257,7 @@
                 data.players[uuid] = delta;
               }
 
+              // TODO: move expire to physics loop?
               // only expire socket or browser session clients
               store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
             
@@ -235,6 +266,15 @@
               
             }
           );
+        } else {
+          // set changed values in data object
+          if (Object.keys(delta).length) {
+            delta.time = Date.now();
+            data.players[uuid] = delta;
+          }
+
+          // notify async.forEach that iterator has completed
+          if (typeof callback === 'function') callback();
         }
 
       });
@@ -243,11 +283,16 @@
 
   };
 
-  var add = function(store, socket, uuid, callback) {
+  var add = function(store, data, global, uuid, callback) {
 
     store.hgetall('player:' + uuid, function(err, res) {
-      // init player and add to global object
-      this.global[uuid] = new Player(res);
+      if (res) {
+        // init player and add to global object
+        var player = global[uuid] = new Player(res);
+
+        // add player state to data object
+        data.players[uuid] = player.getState();
+      }
 
       // notify async.forEach that function has completed
       if (typeof callback === 'function') callback();
@@ -399,6 +444,8 @@
     local: local,
     add: add,
     remove: remove,
+    state: state,
+    delta: delta,
     getDelta: getDelta
   };
 
