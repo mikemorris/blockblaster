@@ -58,7 +58,7 @@
     this.set(properties);
 	};
 
-	Ship.prototype.respondToInput = function(client, pressed) {
+	Ship.prototype.respondToInput = function(client, pressed, callback) {
 
     var vector = core.getVelocity(pressed);
     var fireButtonChanged = false;
@@ -89,9 +89,7 @@
         }
       };
 
-      // add input to queue, then send to server
-      client.queue.input.push(input);
-      client.socket.emit('command:send', input);
+      if (typeof callback === 'function') callback(input);
     }
 
 	};

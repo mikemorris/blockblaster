@@ -110,6 +110,7 @@
 	};
 
   Missile.prototype.interpolate = function() {
+
     // entity interpolation
     var difference = Math.abs(this.sy - this.y);
 
@@ -117,12 +118,14 @@
     if (!this.queue.server.length || difference < 0.1) return;
 
     // snap if large difference
-    if (difference > 150) this.y = this.sy;
+    if (difference > 150) {
+      this.y = this.sy;
+    }
 
     var y;
     var vy;
 
-    var target
+    var target;
     var current;
 
     var count = this.queue.server.length - 1;
@@ -130,20 +133,24 @@
     var prev;
     var next;
 
+    /*
     for(var i = 0; i < count; i++) {
       prev = this.queue.server[i];
       next = this.queue.server[i + 1];
 
-      // if client offset time is between points, set target and break
+      // if client offset time is between points, break
+      // WARN: not all updates in queue have y position
       if(time.client > prev.time && time.client < next.time) {
         target = prev;
         current = next;
         break;
       }
     }
+    */
 
     // no interpolation target found, snap to most recent state
-    if(!target) {
+    if (!target) {
+      // console.log('!target', 'this.queue.server.length', this.queue.server.length);
       target = current = this.queue.server[this.queue.server.length - 1];
     }
 
@@ -155,7 +162,7 @@
       var spread = target.time - current.time;
       timePoint = difference / spread;
     }
-
+    
     // interpolated position
     y = core.lerp(current.state.y, target.state.y, timePoint);
 
