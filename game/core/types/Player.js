@@ -15,6 +15,7 @@
 
   // constructor
 	var Player = function(player) {
+
 		this.ship = new Ship();
 
     // init from existing state
@@ -33,17 +34,17 @@
       }
 
       // init missiles
-      // keys = Object.keys(player.ship.missiles);
-      // length = keys.length;
-
-      // TODO: this should not be necessary
       this.ship.missiles = {};
+      keys = Object.keys(player.ship.missiles);
+      length = keys.length;
+
       var missile;
 
-      for (var j = 0; j < player.ship.missiles.length; j++) {
+      for (var j = 0; j < length; j++) {
+        key = keys[j];
         missile = player.ship.missiles[j];
 
-        this.ship.missiles[missile.uuid] = new Missile();
+        this.ship.missiles[key] = new Missile();
       }
     }
 

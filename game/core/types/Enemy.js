@@ -176,14 +176,7 @@
   };
 
   Enemy.prototype.getState = function() {
-    return {
-      uuid: this.uuid,
-      state: {
-        x: this.x,
-        y: this.y,
-        direction: this.direction
-      }
-    };
+    return this.state;
   };
 
   return Enemy;

@@ -208,10 +208,8 @@
   };
 
 	Ship.prototype.loadMissiles = function() {
-		var i = 0;
-		while(i < this.maxMissiles) {
+		for (var i = 0; i < this.maxMissiles; i++) {
 			this.missiles.push(new Missile(this));
-			i++;
 		}
 	};
 

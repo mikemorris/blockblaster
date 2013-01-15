@@ -37,7 +37,7 @@
         set = target[0];
         id = target[1];
 
-        // console.log('EXPIRE', set, id);
+        console.log('EXPIRE', set, id);
 
         // recursively delete all keys on set:member
         (function(set, id) {
@@ -65,12 +65,12 @@
         store.setnx('lock:npc', Date.now() + 1000, function(err, res) {
           if (res) {
             // no lock previously set, lock acquired
-            levels.loadEnemies(socket, store);
+            levels.loadEnemies(store);
           } else {
             store.getset('lock:npc', Date.now() + 1000, function(err, res) {
               if (res < Date.now()) {
                 // timestamp expired, lock acquired
-                levels.loadEnemies(socket, store);
+                levels.loadEnemies(store);
               }
             });
           }

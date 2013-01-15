@@ -1,1 +1,70 @@
-(function(e,t){typeof exports=="object"?module.exports=t(require("../core"),require("./Entity"),require("./Missile"),require("./Ship")):typeof define=="function"&&define.amd&&define(["../core","./Entity","./Missile","./Ship"],t)})(this,function(e,t,n,r){var i=function(e){this.ship=new r;if(e&&e.ship&&e.ship.state){var t=Object.keys(e.ship.state),i=t.length,s;for(var o=0;o<i;o++)s=t[o],this.ship[s]=parseInt(e.ship.state[s]);this.ship.missiles={};var u;for(var a=0;a<e.ship.missiles.length;a++)u=e.ship.missiles[a],this.ship.missiles[u.uuid]=new n}return this.queue=[],this.ack=0,this};return i.prototype=new t,i.prototype.getState=function(){return{state:this.state,ship:this.ship.getState()}},i});
+(function(root, factory) {
+  if (typeof exports === 'object') {
+    // Node.js
+    module.exports = factory(
+      require('../core'),
+      require('./Entity'),
+      require('./Missile'),
+      require('./Ship')
+    );
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(['../core', './Entity', './Missile', './Ship'], factory);
+  }
+})(this, function(core, Entity, Missile, Ship) {
+
+  // constructor
+	var Player = function(player) {
+		this.ship = new Ship();
+
+    // init from existing state
+    if (player && player.ship && player.ship.state) {
+      var keys = Object.keys(player.ship.state);
+      var length = keys.length;
+      var key;
+
+      for (var i = 0; i < length; i++) {
+        key = keys[i];
+
+        // TODO: not all state may be ints, fix this
+        // watch out for server passing redis state as strings
+        // canvas will only draw Numbers
+        this.ship[key] = parseInt(player.ship.state[key]);
+      }
+
+      // init missiles
+      this.ship.missiles = {};
+      keys = Object.keys(player.ship.missiles);
+      length = keys.length;
+
+      var missile;
+
+      for (var j = 0; j < length; j++) {
+        key = keys[j];
+        missile = player.ship.missiles[j];
+
+        this.ship.missiles[key] = new Missile();
+      }
+    }
+
+    // input queue
+    this.queue = [];
+
+    // most recent acknowledged command
+    this.ack = 0;
+
+    return this;
+	};
+
+	Player.prototype = new Entity();
+
+	Player.prototype.getState = function() {
+    return {
+      state: this.state,
+      ship: this.ship.getState()
+    };
+  };
+
+  return Player;
+
+});

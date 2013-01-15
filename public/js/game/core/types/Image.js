@@ -1,1 +1,47 @@
-(function(e,t){typeof exports=="object"?module.exports=t(require("./Entity")):typeof define=="function"&&define.amd&&define(["./Entity"],t)})(this,function(e){var t=function(e){var t={x:0,y:0};this.set(t),this.load(e)};return t.prototype=new e,t.prototype.load=function(e){var t=this;t.ready=!1,t.image=new window.Image,t.image.src=e,t.image.onload=function(){t.ready=!0}},t.prototype.drawType=function(e){this.ready&&e.ctx.drawImage(this.image,0,0)},t});
+(function(root, factory) {
+  if (typeof exports === 'object') {
+    // Node.js
+    module.exports = factory(
+      require('./Entity')
+    );
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(['./Entity'], factory);
+  }
+})(this, function(Entity) {
+
+	var Image = function(src) {
+		var properties = {
+      x: 0,
+      y: 0
+    };
+
+		this.set(properties);
+
+		this.load(src);
+	};
+
+	Image.prototype = new Entity();
+
+	Image.prototype.load = function(src) {
+		var thisImage = this;
+
+		thisImage.ready = false;
+		thisImage.image = new window.Image();
+		thisImage.image.src = src;
+
+		thisImage.image.onload = function () {
+			thisImage.ready = true;
+		};
+
+	};
+
+	Image.prototype.drawType = function(client) {
+		if(this.ready) {
+			client.ctx.drawImage(this.image, 0, 0);
+		}
+	};
+
+  return Image;
+
+});
