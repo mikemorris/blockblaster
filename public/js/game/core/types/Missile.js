@@ -76,9 +76,21 @@
 	Missile.prototype.move = function(store, callback) {
 
     var delta = {};
+    var difference;
 
-		this.y -= this.vy * time.delta;
-    delta['y'] = this.y;
+    if (this.sy) {
+      difference = Math.abs(this.sy - this.y);
+
+      if (difference > 150) {
+        this.y = this.sy;
+      } else {
+        // update reconciled position
+        this.y = core.lerp(this.y, this.sy, time.delta * core.smoothing);
+      }
+    } else {
+      this.y -= this.vy * time.delta;
+      delta['y'] = this.y;
+    }
 
     // reload if offscreen
 		if(this.y < (0 - this.height)) {
@@ -88,6 +100,22 @@
     if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
+
+  Missile.prototype.reconcile = function(data) {
+
+    // server reconciliation
+    var dx = 0;
+    var dy = 0;
+
+    // update reconciled position with client prediction
+    // server position plus dead reckoning
+    dy = parseInt(this.vy * time.delta);
+
+    // set reconciled position
+    this.sx = parseInt(data.state.x);
+    this.sy = parseInt(data.state.y) + dy;
+
+  };
 
 	Missile.prototype.reload = function(store, callback) {
 
@@ -133,7 +161,6 @@
     var prev;
     var next;
 
-    /*
     for(var i = 0; i < count; i++) {
       prev = this.queue.server[i];
       next = this.queue.server[i + 1];
@@ -146,7 +173,6 @@
         break;
       }
     }
-    */
 
     // no interpolation from found, snap to most recent state
     if (!from) {
@@ -167,6 +193,7 @@
     y = core.lerp(from.state.y, to.state.y, timePoint);
 
     // apply smoothing
+    this.x = this.sx;
     this.y = core.lerp(this.y, y, time.delta * core.smoothing);
 
     // reload if offscreen
