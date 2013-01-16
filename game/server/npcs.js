@@ -201,7 +201,12 @@
         // init npc and add to global object
         var npc = global[uuid] = new Enemy(parseInt(res.x), parseInt(res.y), parseInt(res.direction), uuid);
 
-        data.npcs[uuid] = npc.getState();
+        var state = npc.getState();
+
+        // don't pass undefined state
+        if (state) {
+          data.npcs[uuid] = state;
+        }
       }
 
       // notify async.forEach that function has completed
