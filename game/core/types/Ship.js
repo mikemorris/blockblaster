@@ -97,12 +97,10 @@
 	Ship.prototype.move = function() {
 
     if (this.sx) {
-
       // update reconciled position
       this.x = core.lerp(this.x, this.sx, time.delta * core.smoothing);
-
     } else {
-      this.x += this.vx;
+      this.x += this.vx * time.delta;
     }
 
 	};

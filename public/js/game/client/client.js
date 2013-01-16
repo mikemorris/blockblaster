@@ -113,6 +113,7 @@
 
           // TODO: clean this up
           if (client_player && player) {
+            client_player.uuid = uuid;
 
             if (player.ship) {
 
@@ -138,10 +139,11 @@
                   // queue reconciled position for entity interpolation
                   client_player.ship.queue.server.push(player.ship);
                   
-                  // splice array, keeping BUFFER_SIZE most recent items
-                  if (client_player.ship.queue.server.length >= core.buffersize) {
-                    client_player.ship.queue.server.splice(0, client_player.ship.queue.server.length - core.buffersize);
-                  }
+                  // remove all updates older than one second from interpolation queue
+                  client_player.ship.queue.server = client_player.ship.queue.server.filter(function(el, index, array) {
+                    return el.time > (Date.now() - 1000);
+                  });
+
                 }
 
               }
@@ -190,11 +192,16 @@
                     // set timestamp for interpolation
                     serverMissile.time = Date.now();
 
-                    clientMissile.queue.server.push(serverMissile);
+                    if (client_player.uuid === client.uuid) {
+                      // reconcile client prediction with server
+                      clientMissile.reconcile(serverMissile);
+                    } else {
+                      clientMissile.queue.server.push(serverMissile);
 
-                    // splice array, keeping BUFFER_SIZE most recent items
-                    if (clientMissile.queue.server.length >= core.buffersize) {
-                      clientMissile.queue.server.splice(0, clientMissile.queue.server.length - core.buffersize);
+                      // remove all updates older than one second from interpolation queue
+                      clientMissile.queue.server = clientMissile.queue.server.filter(function(el, index, array) {
+                        return el.time > (Date.now() - 1000);
+                      });
                     }
                   }
                 }
@@ -314,8 +321,9 @@
     var length = players.length;
     var uuid;
     var player;
+    var interpolate;
 
-    var updateMissiles = function(missiles) {
+    var updateMissiles = function(missiles, interpolate) {
       var keys = Object.keys(missiles);
       var length = keys.length;
       var key;
@@ -326,7 +334,12 @@
         missile = missiles[key];
 
         if (missile.isLive) {
-          missile.interpolate();
+          if (interpolate) {
+            missile.interpolate();
+          } else {
+            missile.move();
+          }
+
           missile.draw(client);
         }
       }
@@ -335,8 +348,14 @@
     for (var i = 0; i < length; i++) {
       uuid = players[i];
       player = client.players[uuid];
+      interpolate = (uuid !== client.uuid);
 
-      if (uuid === client.uuid) {
+      if (interpolate) {
+
+        // interpolate position of other players
+        player.ship.interpolate();
+
+      } else {
 
         // client prediction only for active player
         player.ship.respondToInput(client, input.pressed, function(input) {
@@ -347,14 +366,9 @@
 
         player.ship.move();
 
-      } else {
-
-        // interpolate position of other players
-        player.ship.interpolate();
-
       }
 
-      updateMissiles(player.ship.missiles);
+      updateMissiles(player.ship.missiles, interpolate);
 
       player.ship.draw(client);
     }
