@@ -125,8 +125,8 @@
     var y;
     var vy;
 
-    var target;
-    var current;
+    var from;
+    var to;
 
     var count = this.queue.server.length - 1;
 
@@ -141,30 +141,30 @@
       // if client offset time is between points, break
       // WARN: not all updates in queue have y position
       if(time.client > prev.time && time.client < next.time) {
-        target = prev;
-        current = next;
+        from = prev;
+        to = next;
         break;
       }
     }
     */
 
-    // no interpolation target found, snap to most recent state
-    if (!target) {
-      // console.log('!target', 'this.queue.server.length', this.queue.server.length);
-      target = current = this.queue.server[this.queue.server.length - 1];
+    // no interpolation from found, snap to most recent state
+    if (!from) {
+      // console.log('Missile !from', 'this.queue.server.length', this.queue.server.length);
+      from = to = this.queue.server[this.queue.server.length - 1];
     }
 
-    // calculate client time percentage between current and target points
+    // calculate client time percentage between to and from points
     var timePoint = 0;
 
-    if (target.time !== current.time) {
-      var difference = target.time - time.client;
-      var spread = target.time - current.time;
+    if (from.time !== to.time) {
+      var difference = from.time - time.client;
+      var spread = from.time - to.time;
       timePoint = difference / spread;
     }
     
     // interpolated position
-    y = core.lerp(current.state.y, target.state.y, timePoint);
+    y = core.lerp(from.state.y, to.state.y, timePoint);
 
     // apply smoothing
     this.y = core.lerp(this.y, y, time.delta * core.smoothing);

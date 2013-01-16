@@ -128,8 +128,22 @@
                   // set server state
                   if (player.ship.state.x) {
                     client_player.ship.sx = parseInt(player.ship.state.x);
+                  } else {
+                    player.ship.state.x = client_player.ship.x;
+                  }
+
+                  // set timestamp for interpolation
+                  player.ship.time = Date.now();
+
+                  // queue reconciled position for entity interpolation
+                  client_player.ship.queue.server.push(player.ship);
+                  
+                  // splice array, keeping BUFFER_SIZE most recent items
+                  if (client_player.ship.queue.server.length >= core.buffersize) {
+                    client_player.ship.queue.server.splice(0, client_player.ship.queue.server.length - core.buffersize);
                   }
                 }
+
               }
 
               if (Object.keys(client_player.ship.missiles) && player.ship.missiles) {
@@ -177,6 +191,11 @@
                     serverMissile.time = Date.now();
 
                     clientMissile.queue.server.push(serverMissile);
+
+                    // splice array, keeping BUFFER_SIZE most recent items
+                    if (clientMissile.queue.server.length >= core.buffersize) {
+                      clientMissile.queue.server.splice(0, clientMissile.queue.server.length - core.buffersize);
+                    }
                   }
                 }
 
@@ -327,12 +346,10 @@
         });
 
         player.ship.move();
-        player.ship.interpolate();
 
       } else {
 
         // interpolate position of other players
-        player.ship.move();
         player.ship.interpolate();
 
       }
