@@ -99,9 +99,7 @@
             .srem('npc', uuid)
             .del('npc:' + uuid)
             .zrem('expire', 'npc+' + uuid)
-            .exec(function(err, res) {
-              socket.io.sockets.emit('npc:destroy', uuid);
-            });
+            .exec(function(err, res) {});
         } else {
           npc.move(store, function(uuid, delta) {
             var keys = Object.keys(delta);
@@ -112,6 +110,9 @@
               key = keys[i];
               store.hset('npc:' + uuid, key, delta[key], function(err, res) {});
             }
+
+            // expire all NPCs to clean redis on server crash
+            store.zadd('expire', Date.now(), 'npc+' + uuid, function(err, res) {});
           });
         }
       })(i);
@@ -141,7 +142,11 @@
       this.updateMissiles(store, player.ship.missiles);
 
       // no input to process
-      if (!player.queue.length) continue;
+      if (!player.queue.length) {
+        // update expiration if no player input to process
+        store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
+        continue;
+      }
 
       (function iterate(player, uuid, move) {
 
@@ -193,8 +198,12 @@
             });
           }
 
+          // only expire socket or browser session clients
+          store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
+
           // if queue empty, stop looping
           if (!player.queue.length) return;
+
           iterate(player, uuid, player.queue.shift());
         });
       })(player, uuid, player.queue.shift());

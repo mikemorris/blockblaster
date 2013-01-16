@@ -269,11 +269,6 @@
                     data.players[uuid] = delta;
                   }
 
-                  // only expire socket or browser session clients
-                  if (_.contains(local, uuid)) {
-                    store.zadd('expire', Date.now(), 'player+' + uuid, function(err, res) {});
-                  }
-                
                   // notify async that iterator has completed
                   if (typeof callback === 'function') callback();
                   

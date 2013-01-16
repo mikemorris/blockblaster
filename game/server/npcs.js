@@ -179,11 +179,6 @@
             data.npcs[uuid] = _.pick(next, delta);
           }
 
-          // expire all NPCs to clean redis on server crash
-          if (_.contains(local, uuid)) {
-            store.zadd('expire', Date.now(), 'npc+' + uuid, function(err, res) {});
-          }
-
           // notify async.forEach in updateNPCs that function has completed
           if (typeof callback === 'function') callback();
 
