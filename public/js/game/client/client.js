@@ -127,10 +127,12 @@
                   client_player.ship.reconcile(client, player);
                 } else {
                   // set server state
-                  if (player.ship.state.x) {
-                    client_player.ship.sx = parseInt(player.ship.state.x);
-                  } else {
+                  if (!player.ship.state.x) {
                     player.ship.state.x = client_player.ship.x;
+                  }
+
+                  if (!player.ship.state.y) {
+                    player.ship.state.y = client_player.ship.y;
                   }
 
                   // set timestamp for interpolation
@@ -173,15 +175,11 @@
 
                   // TODO: cleanup
                   if (clientMissile) {
-                    if (serverMissile.state.y) {
-                      clientMissile.sy = parseInt(serverMissile.state.y);
-                    } else {
+                    if (!serverMissile.state.y) {
                       serverMissile.state.y = clientMissile.sy;
                     }
 
-                    if (serverMissile.state.x) {
-                      clientMissile.x = parseInt(serverMissile.state.x);
-                    } else {
+                    if (!serverMissile.state.x) {
                       serverMissile.state.x = clientMissile.x;
                     }
 
@@ -236,27 +234,29 @@
           client_npc = client.npcs[uuid];
 
           if (client_npc) {
-            // update last acknowledged input
-            if (data.ack) {
-              client_npc.ack = data.ack;
-            }
-
             // interpolate destroy animation?
             client_npc.isHit = npc.isHit ? true : false;
 
-            // TODO: clean this up and iterate over properties
-            client_npc.sx = typeof(npc.x) !== 'undefined' ? parseInt(npc.x) : client_npc.x;
-            client_npc.sy = typeof(npc.y) !== 'undefined' ? parseInt(npc.y) : client_npc.y;
+            if (!npc.y) {
+              npc.y = client_npc.sy;
+            }
+
+            if (!npc.x) {
+              npc.x = client_npc.sx;
+            }
 
             client_npc.rotation = parseInt(npc.rotation);
+
+            // set timestamp for interpolation
+            npc.time = time.client;
 
             // queue server updates for entity interpolation
             client_npc.queue.server.push(npc);
             
-            // splice array, keeping BUFFER_SIZE most recent items
-            if (client_npc.queue.server.length >= core.buffersize) {
-              client_npc.queue.server.splice(-core.buffersize);
-            }
+            // remove all updates older than one second from interpolation queue
+            client_npc.queue.server = client_npc.queue.server.filter(function(el, index, array) {
+              return el.time > (Date.now() - 1000);
+            });
           }
         }
       }
