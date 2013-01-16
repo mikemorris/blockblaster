@@ -78,6 +78,10 @@
     var delta = {};
     var difference;
 
+    if (this.sx) {
+      this.x = this.sx;
+    }
+
     if (this.sy) {
       difference = Math.abs(this.sy - this.y);
 
