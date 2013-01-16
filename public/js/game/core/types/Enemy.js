@@ -176,7 +176,11 @@
   };
 
   Enemy.prototype.getState = function() {
-    return this.state;
+    // only return state with keys
+    // this.state initialized as {} in Entity
+    if (Object.keys(this.state).length) {
+      return this.state;
+    }
   };
 
   return Enemy;

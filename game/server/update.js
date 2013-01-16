@@ -66,8 +66,8 @@
       function(callback) { npcs.state(store, data, callback) }
     ], function() {
       data.time = Date.now();
-      // console.log(data);
       socket.io.sockets.volatile.emit('state:full', data);
+      // console.log(data);
     });
 
   };

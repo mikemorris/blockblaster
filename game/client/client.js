@@ -70,6 +70,8 @@
         if (npc && client.npcs[uuid]) {
           // TODO: if defined on server and client, update state
         } else if (npc) {
+          if (isNaN(npc.x) || isNaN(npc.y) || isNaN(npc.direction)) debugger;
+
           // if defined on server but not on client, create new NPC on client
           client.npcs[uuid] = new Enemy(parseInt(npc.x), parseInt(npc.y), parseInt(npc.direction));
         } else {
