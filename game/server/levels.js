@@ -32,16 +32,16 @@
         // add npc to redis set
         // and init npc redis state hash
         store.multi()
-          .sadd('npc', npc.uuid)
+          .sadd('npc', uuid)
           .hmset(
-            'npc:' + npc.uuid, 
+            'npc:' + uuid, 
             'x', npc.x,
             'y', npc.y,
             'speed', npc.speed,
             'vx', npc.vx,
             'direction', npc.direction
           )
-          .zadd('expire', Date.now(), 'npc+' + npc.uuid)
+          .zadd('expire', Date.now(), 'npc+' + uuid)
           .exec(function(err, res) {
             // add npc to server object
             npcs.global[uuid] = npc;
