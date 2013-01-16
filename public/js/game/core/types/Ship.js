@@ -96,9 +96,17 @@
 
 	Ship.prototype.move = function() {
 
+    var difference;
+
     if (this.sx) {
-      // update reconciled position
-      this.x = core.lerp(this.x, this.sx, time.delta * core.smoothing);
+      difference = Math.abs(this.sx - this.x);
+
+      if (difference > 150) {
+        this.x = this.sx;
+      } else {
+        // update reconciled position
+        this.x = core.lerp(this.x, this.sx, time.delta * core.smoothing);
+      }
     } else {
       this.x += this.vx * time.delta;
     }

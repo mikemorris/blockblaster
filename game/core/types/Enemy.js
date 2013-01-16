@@ -81,9 +81,21 @@
 	Enemy.prototype.move = function(store, callback) {
 
     var delta = {};
+    var difference;
 
-		this.x += this.vx * this.direction * time.delta;
-    delta['x'] = this.x;
+    if (this.sx) {
+      difference = Math.abs(this.sx - this.x);
+
+      if (difference > 150) {
+        this.x = this.sx;
+      } else {
+        // update reconciled position
+        this.x = core.lerp(this.x, this.sx, time.delta * core.smoothing);
+      }
+    } else {
+      this.x += this.vx * this.direction * time.delta;
+      delta['x'] = this.x;
+    }
 
     // missile impact
 		if(this.isHit) {

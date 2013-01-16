@@ -176,7 +176,6 @@
 
     // no interpolation from found, snap to most recent state
     if (!from) {
-      // console.log('Missile !from', 'this.queue.server.length', this.queue.server.length);
       from = to = this.queue.server[this.queue.server.length - 1];
     }
 
