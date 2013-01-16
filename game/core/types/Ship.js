@@ -99,15 +99,7 @@
     if (this.sx) {
 
       // update reconciled position
-      this.sx += this.vx;
-
-      // queue reconciled position for entity interpolation
-      this.queue.server.push(this);
-      
-      // splice array, keeping BUFFER_SIZE most recent items
-      if (this.queue.server.length >= core.buffersize) {
-        this.queue.server.splice(0, this.queue.server.length - core.buffersize);
-      }
+      this.x = core.lerp(this.x, this.sx, time.delta * core.smoothing);
 
     } else {
       this.x += this.vx;
@@ -163,8 +155,8 @@
     var x;
     var vx;
 
-    var target
-    var current;
+    var from
+    var to;
 
     var count = this.queue.server.length - 1;
 
@@ -175,30 +167,30 @@
       prev = this.queue.server[i];
       next = this.queue.server[i + 1];
 
-      // if client offset time is between points, set target and break
+      // if client offset time is between points, set from and break
       if(time.client > prev.time && time.client < next.time) {
-        target = prev;
-        current = next;
+        from = prev;
+        to = next;
         break;
       }
     }
 
-    // no interpolation target found, snap to most recent state
-    if(!target) {
-      target = current = this.queue.server[this.queue.server.length - 1];
+    // no interpolation from found, snap to most recent state
+    if(!from) {
+      from = to = this.queue.server[this.queue.server.length - 1];
     }
 
-    // calculate client time percentage between current and target points
+    // calculate client time percentage between to and from points
     var timePoint = 0;
 
-    if (target.time !== current.time) {
-      var difference = target.time - time.client;
-      var spread = target.time - current.time;
+    if (from.time !== to.time) {
+      var difference = from.time - time.client;
+      var spread = from.time - to.time;
       timePoint = difference / spread;
     }
 
     // interpolated position
-    x = core.lerp(current.sx, target.sx, timePoint);
+    x = core.lerp(from.state.x, to.state.x, timePoint);
 
     // apply smoothing
     this.x = core.lerp(this.x, x, time.delta * core.smoothing);
