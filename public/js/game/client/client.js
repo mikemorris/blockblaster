@@ -73,7 +73,9 @@
           if (isNaN(npc.x) || isNaN(npc.y) || isNaN(npc.direction)) debugger;
 
           // if defined on server but not on client, create new NPC on client
-          client.npcs[uuid] = new Enemy(parseInt(npc.x), parseInt(npc.y), parseInt(npc.direction));
+          client.npcs[uuid] = new Enemy(parseInt(npc.x), parseInt(npc.y), parseInt(npc.direction), uuid);
+          client.npcs[uuid].sx = parseInt(npc.x);
+          client.npcs[uuid].sy = parseInt(npc.y);
         } else {
           delete client.npcs[uuid];
         }
@@ -245,11 +247,15 @@
             // interpolate destroy animation?
             client_npc.isHit = npc.isHit ? true : false;
 
-            if (!npc.y) {
+            if (npc.y) {
+              client_npc.sy = parseInt(npc.y);
+            } else {
               npc.y = client_npc.sy;
             }
 
-            if (!npc.x) {
+            if (npc.x) {
+              client_npc.sx = parseInt(npc.x);
+            } else {
               npc.x = client_npc.sx;
             }
 
