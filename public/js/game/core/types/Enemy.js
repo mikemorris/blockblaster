@@ -133,8 +133,7 @@
 
     // snap if large difference
     if (difference > 200) {
-      // TODO: how is it that NPCs are drifting out to x = 80000?
-      console.log(difference);
+      // NPCs drift out to extreme positions if server falls asleep
       this.x = this.sx;
       this.y = this.sy;
       return;

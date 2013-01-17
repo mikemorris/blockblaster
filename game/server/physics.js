@@ -79,24 +79,6 @@
         });
 
         checkCollisions(missile);
-      } else {
-        // update shit right
-        (function(missile) {
-          store.hgetall('missile:' + missile.uuid, function(err, res) {
-            if (res) {
-              var keys = Object.keys(res);
-              var length = keys.length;
-              var key;
-
-              for (var k = 0; k < length; k++) {
-                key = keys[k];
-
-                // well now this is updating to 380 but shit is still whack
-                store.hset('missile:' + missile.uuid, key, missile[key], function(err, res) {});
-              }
-            }
-          });
-        })(missile);
       }
     }
   };

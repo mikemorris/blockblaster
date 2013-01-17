@@ -341,13 +341,16 @@
         key = keys[i];
         missile = missiles[key];
 
-        if (interpolate) {
-          missile.interpolate();
-        } else {
-          missile.move();
+        if (missile.isLive) {
+          if (interpolate) {
+            missile.interpolate(function() {
+              missile.draw(client);
+            });
+          } else {
+            missile.move();
+            missile.draw(client);
+          }
         }
-
-        missile.draw(client);
       }
     };
 
