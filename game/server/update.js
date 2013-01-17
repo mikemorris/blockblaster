@@ -35,6 +35,7 @@
 
     // console.log(data);
 
+    /*
     var keys = Object.keys(data.players);
     var key;
 
@@ -46,6 +47,7 @@
         // console.log(data.players[key].ship.missiles);
       }
     }
+    */
 
     // return delta object to client
     socket.io.sockets.volatile.emit('state:update', data);
@@ -69,6 +71,7 @@
       data.time = Date.now();
       socket.io.sockets.volatile.emit('state:full', data);
 
+      /*
       var keys = Object.keys(data.players);
       var key;
 
@@ -79,6 +82,7 @@
           // console.log(data.players[key].ship.missiles);
         }
       }
+      */
     });
 
   };

@@ -379,8 +379,6 @@
   var add = function(store, data, global, uuid, callback) {
 
     getPlayer(store, uuid, function(player) {
-      console.log(player.ship.missiles);
-
       // init player and add to global object
       global[uuid] = new Player(player);
 
