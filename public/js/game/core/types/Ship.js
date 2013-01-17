@@ -253,11 +253,16 @@
 
 	Ship.prototype.getState = function() {
     // init missiles
-    var missiles = [];
+    var missiles = {};
+    var missile;
+    var uuid;
 
     // iterate over missiles
     for (var i = 0; i < this.missiles.length; i++) {
-      missiles.push(this.missiles[i].getState());
+      missile = this.missiles[i];
+      uuid = missile.uuid;
+
+      missiles[uuid] = missile.getState();
     }
 
     return {

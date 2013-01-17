@@ -13,19 +13,20 @@
   }
 })(this, function(core, time, Rectangle, uuid) {
 
-	var Missile = function(ship) {
-    this.uuid = uuid ? uuid.v4() : false;
+	var Missile = function(ship, missile) {
+    this.uuid = missile ? missile.uuid : (uuid ? uuid.v4() : false);
+
+    this.ship = ship;
 
     this.width = 10;
     this.height = 20;
 
-    this.ship = ship;
+    this.x = missile ? parseInt(missile.state.x) : -this.width;
+    this.y = missile ? parseInt(missile.state.y) : -this.height;
 
 		var properties = {
 			speed: 300,
-			vy: 0,
-			y: -this.height,
-			x: -this.width
+			vy: 0
 		};
 
 		this.set(properties);

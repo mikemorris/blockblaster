@@ -299,16 +299,93 @@
 
   };
 
-  var add = function(store, data, global, uuid, callback) {
+  var getMissile = function(store, player, uuid, callback) {
+
+    store.hgetall('missile:' + uuid, function(err, res) {
+
+      if (res) {
+        // init missile
+        var missile = player.ship.missiles[uuid] = {};
+        missile.uuid = uuid;
+        missile.state = res;
+      }
+
+      // notify async.forEach that iterator has completed
+      if (typeof callback === 'function') callback();
+
+    });
+
+  };
+
+  var getShip = function(store, player, uuid, callback) {
+
+    store.hgetall('ship:' + uuid, function(err, res) {
+      if (res) {
+        // init ship
+        var ship = player.ship = {};
+        ship.uuid = uuid;
+        ship.state = res;
+        ship.missiles = {};
+
+        store.hgetall('parent', function(err, res) {
+          if (res) {
+            var children = res;
+            var keys = Object.keys(children);
+            var child;
+
+            async.forEach(
+              keys,
+              function(key, callback) {
+                if (children[key].split('+')[1] === uuid) {
+
+                  var child = key.split('+');
+                  var childSet = child[0];
+                  var childKey = child[1];
+
+                  if (childSet === 'missile') {
+                    getMissile(store, player, childKey, callback);
+                  }
+                } else {
+                  // notify async.forEach that recursion has completed
+                  if (typeof callback === 'function') callback();
+                }
+              }, 
+              function() {
+                if (typeof callback === 'function') callback();
+              }
+            );
+          }
+        });
+
+      }
+    });
+
+  };
+
+  var getPlayer = function(store, uuid, callback) {
 
     store.hgetall('player:' + uuid, function(err, res) {
       if (res) {
-        // init player and add to global object
-        var player = global[uuid] = new Player(res);
+        var player = res;
 
-        // add player state to data object
-        data.players[uuid] = player.getState();
+        getShip(store, player, player.ship, function() {
+          callback(player);
+        });
       }
+    });
+
+  };
+
+  var add = function(store, data, global, uuid, callback) {
+
+    getPlayer(store, uuid, function(player) {
+      console.log(player.ship.missiles);
+
+      // init player and add to global object
+      global[uuid] = new Player(player);
+
+      // add player state to data object
+      data.players[uuid] = global[uuid].getState();
 
       // notify async.forEach that function has completed
       if (typeof callback === 'function') callback();
