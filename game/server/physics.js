@@ -35,18 +35,18 @@
         npc = npcs.global[key];
 
         if(core.isCollision(npc, missile)) {
-          missile.explode(store, function(uuid, delta) {
+          missile.explode(function(missile, delta) {
             var keys = Object.keys(delta);
             var length = keys.length;
             var key;
 
             for (var i = 0; i < length; i++) {
               key = keys[i];
-              store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
+              store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
             }
           });
 
-          npc.destroy(store, function(uuid, delta) {
+          npc.destroy(store, function(missile, delta) {
             var keys = Object.keys(delta);
             var length = keys.length;
             var key;
@@ -61,25 +61,43 @@
     };
 
     for (var i = 0; i < missiles.length; i++) {
-      (function(i) {
-        var missile = missiles[i];
-        var uuid = missile.uuid;
+      var missile = missiles[i];
+      var uuid = missile.uuid;
 
-        if(missile.isLive) {
-          missile.move(store, function(uuid, delta) {
-            var keys = Object.keys(delta);
-            var length = keys.length;
-            var key;
+      if(missile.isLive) {
+        missile.move(function(missile, delta) {
+          // double check necessary because of asyncronocity
+          // FIXME: last move callback firing after reload callback
+          var keys = Object.keys(delta);
+          var length = keys.length;
+          var key;
 
-            for (var i = 0; i < length; i++) {
-              key = keys[i];
-              store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
+          for (var j = 0; j < length; j++) {
+            key = keys[j];
+            store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
+          }
+        });
+
+        checkCollisions(missile);
+      } else {
+        // update shit right
+        (function(missile) {
+          store.hgetall('missile:' + missile.uuid, function(err, res) {
+            if (res) {
+              var keys = Object.keys(res);
+              var length = keys.length;
+              var key;
+
+              for (var k = 0; k < length; k++) {
+                key = keys[k];
+
+                // well now this is updating to 380 but shit is still whack
+                store.hset('missile:' + missile.uuid, key, missile[key], function(err, res) {});
+              }
             }
           });
-
-          checkCollisions(missile);
-        }
-      })(i);
+        })(missile);
+      }
     }
   };
 
@@ -101,7 +119,7 @@
             .zrem('expire', 'npc+' + uuid)
             .exec(function(err, res) {});
         } else {
-          npc.move(store, function(uuid, delta) {
+          npc.move(store, function(missile, delta) {
             var keys = Object.keys(delta);
             var length = keys.length;
             var key;
@@ -176,14 +194,14 @@
           }
 
           if(move.input.spacebar) {
-            player.ship.fire(store, function(uuid, delta) {
+            player.ship.fire(store, function(missile, delta) {
               var keys = Object.keys(delta);
               var length = keys.length;
               var key;
 
               for (var i = 0; i < length; i++) {
                 key = keys[i];
-                store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
+                store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
               }
             });
           } else {

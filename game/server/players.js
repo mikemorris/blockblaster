@@ -41,14 +41,14 @@
     }
 
     if(move.input.spacebar) {
-      player.ship.fire(store, function(uuid, delta) {
+      player.ship.fire(store, function(missile, delta) {
         var keys = Object.keys(delta);
         var length = keys.length;
         var key;
 
         for (var i = 0; i < length; i++) {
           key = keys[i];
-          store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
+          store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
         }
       });
     } else {
@@ -57,7 +57,7 @@
 
     // update ack
     if (move.seq > player.ack) {
-      store.hset('player:' + uuid, 'ack', move.seq, function(err, res) {
+      store.hset('player:' + missile.uuid, 'ack', move.seq, function(err, res) {
         player.ack = res;
       });
     }
