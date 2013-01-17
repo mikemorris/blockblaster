@@ -47,7 +47,6 @@
             .zrem('expire', item)
             .exec(function(err, res) {
               if (set === 'player') {
-                console.log('players:remove', id);
                 players.remove(id);
                 socket.io.sockets.emit('players:remove', id);
               }

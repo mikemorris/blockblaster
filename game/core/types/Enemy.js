@@ -14,8 +14,8 @@
   }
 })(this, function(core, time, Entity, Image, uuid) {
 
-	var Enemy = function(x, y, direction) {
-    this.uuid = uuid ? uuid.v4() : false;
+	var Enemy = function(x, y, direction, id) {
+    this.uuid = id ? id : (uuid ? uuid.v4() : false);
 
 		var properties = {
 			x: x + core.getRandomNumber(-25, 25),
@@ -51,10 +51,18 @@
 
 	Enemy.prototype = new Entity();
 
-	Enemy.prototype.destroy = function() {
+	Enemy.prototype.destroy = function(store, callback) {
+
+    var delta = {};
+
 		this.isHit = true;
+    delta['isHit'] = this.isHit;
+
 		this.vy = -200;
-		// this.isDestroyed = true;
+    delta['vy'] = this.vy;
+
+    if (typeof callback === 'function') callback(this.uuid, delta);
+
 	};
 
 	Enemy.prototype.drawType = function(client) {
@@ -86,7 +94,6 @@
       delta['rotation'] = this.rotation;
 
 			this.isDestroyed = this.y < -Math.max(this.height, this.width);
-      delta['isDestroyed'] = this.isDestroyed;
 		} else {
 			if(this.x > this.origin.x + this.range) {
 				this.direction = -1;

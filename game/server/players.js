@@ -65,8 +65,6 @@
   };
 
   var remove = function(uuid) {
-    console.log('remove:uuid', uuid);
-
     this.local = _.filter(this.local, function(player) {
       return player !== uuid;
     });
@@ -140,8 +138,6 @@
       }
       
       store.hgetall('ship:' + player.ship.uuid, function(err, res) {
-
-        console.log(player.ship.uuid, res);
 
         // save reference to old values and update state
         var prev = player.ship.state;

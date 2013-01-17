@@ -29,3 +29,8 @@ function handler (req, res) {
     file.serve(req, res);
   });
 }
+
+// TODO: use cluster for physics calculations
+// to not block main thread?
+var cluster = require('cluster');
+console.log('CPUs:', require('os').cpus().length);

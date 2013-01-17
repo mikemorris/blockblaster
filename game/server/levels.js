@@ -2,14 +2,12 @@
   if (typeof exports === 'object') {
     // Node.js
     module.exports = factory(
+      require('./npcs'),
       require('../core/types/Enemy.js'),
       require('async')
     );
   }
-})(this, function(Enemy, async) {
-
-  var players = {};
-  var npcs = {};
+})(this, function(npcs, Enemy, async) {
 
   var loadEnemies = function(socket, store) {
 
@@ -46,7 +44,9 @@
           .zadd('expire', Date.now(), 'npc+' + npc.uuid)
           .exec(function(err, res) {
             // add npc to server object
-            npcs[uuid] = npc;
+            npcs.global[uuid] = npc;
+            npcs.local.push(uuid);
+
             socket.io.sockets.emit('npc:add', npc.getState());
 
             // notify async.forEach that function has completed
@@ -61,8 +61,6 @@
   };
 
   return {
-    players: players,
-    npcs: npcs,
     loadEnemies: loadEnemies
   };
 
