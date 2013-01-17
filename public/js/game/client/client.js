@@ -46,13 +46,14 @@
       // iterate over union of client and server players
       for (var i = 0; i < players.length; i++) {
         uuid = players[i];
-
         player = data.players[uuid];
+
         if (player && client.players[uuid]) {
           // TODO: if defined on server and client, update state
         } else if (player) {
           // if defined on server but not on client, create new Player on client
           client.players[uuid] = new Player(player);
+          // console.log(client.players[uuid]);
         } else {
           delete client.players[uuid];
         }
@@ -65,8 +66,8 @@
       // iterate over union of client and server players
       for (var j = 0; j < npcs.length; j++) {
         uuid = npcs[j];
-
         npc = data.npcs[uuid];
+
         if (npc && client.npcs[uuid]) {
           // TODO: if defined on server and client, update state
         } else if (npc) {
@@ -175,8 +176,8 @@
                   serverMissile = missiles[key];
 
                   // find clientMissile in array
-                  clientMissile = _.find(client_player.ship.missiles, function(missile, uuid) {
-                    return uuid === key;
+                  clientMissile = _.find(client_player.ship.missiles, function(missile) {
+                    return missile.uuid === key;
                   });
 
                   // TODO: cleanup
@@ -217,9 +218,6 @@
               }
 
             }
-
-          } else {
-            client.players[uuid] = new Player(player);
           }
 
         }
@@ -338,16 +336,18 @@
     var interpolate;
 
     var updateMissiles = function(missiles, interpolate) {
-      var keys = Object.keys(missiles);
-      var length = keys.length;
-      var key;
+      var length = missiles.length;
+      var uuid;
       var missile;
 
       for (var i = 0; i < length; i++) {
-        key = keys[i];
-        missile = missiles[key];
+        uuid = missiles[i].uuid;
 
-        if (missile.isLive) {
+        missile = _.find(missiles, function(missile) {
+          return missile.uuid === uuid;
+        });
+
+        if (missile && missile.isLive) {
           if (interpolate) {
             missile.interpolate(function() {
               missile.draw(client);

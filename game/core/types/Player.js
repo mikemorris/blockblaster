@@ -34,7 +34,7 @@
       }
 
       // init missiles
-      this.ship.missiles = {};
+      this.ship.missiles = [];
       keys = Object.keys(player.ship.missiles);
       length = keys.length;
 
@@ -42,9 +42,8 @@
 
       for (var j = 0; j < length; j++) {
         key = keys[j];
-        missile = player.ship.missiles[j];
-
-        this.ship.missiles[key] = new Missile();
+        missile = player.ship.missiles[key];
+        this.ship.missiles.push(new Missile(this.ship, missile));
       }
     }
 
