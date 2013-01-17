@@ -141,16 +141,13 @@
 
 	};
 
-  Missile.prototype.interpolate = function() {
+  Missile.prototype.interpolate = function(callback) {
 
     // entity interpolation
-    var dx = Math.abs(this.sx - this.x);
     var dy = Math.abs(this.sy - this.y);
 
-    var difference = (!isNaN(dy) && dy < 0.1 && !isNaN(dx) && dx < 0.1);
-
     // return if no server updates to process
-    if (!this.queue.server.length || difference) return;
+    if (!this.queue.server.length) return;
 
     var x;
     var y;
@@ -160,53 +157,44 @@
     var prev;
     var next;
 
-    var from;
-    var to;
-
     for(var i = 0; i < count; i++) {
       prev = this.queue.server[i];
       next = this.queue.server[i + 1];
 
       // if client offset time is between points, break
-      if(time.client > prev.time && time.client < next.time) {
-        from = prev;
-        to = next;
-        break;
-      }
+      if(time.client > prev.time && time.client < next.time) break;
     }
 
-    // FIXME: fix interpolation bounce and include interpolation delay in snap
-    // or build alternative to missile object pool
-
-    /* if (from && dy < 100) {
-      // calculate client time percentage between to and from points
+    if (prev) {
+      // calculate client time percentage between points
       var timePoint = 0;
+      var difference = prev.time - time.client;
+      var spread = prev.time - time.server;
+      timePoint = difference / spread;
 
-      if (from.time !== to.time) {
-        var difference = from.time - time.client;
-        var spread = from.time - to.time;
-        timePoint = difference / spread;
-      }
-      
       // interpolated position
-      y = core.lerp(from.state.y, to.state.y, timePoint);
+      x = core.lerp(prev.state.x, this.sx, timePoint);
+      y = core.lerp(prev.state.y, this.sy, timePoint);
     
-      // apply smoothing
-      this.y = core.lerp(this.y, y, time.delta * core.smoothing);
-    } else { */
+      if (dy < 100) {
+        // apply smoothing
+        this.y = core.lerp(this.y, y, time.delta * core.smoothing);
+      } else {
+        // apply smooth snap
+        this.y = core.lerp(prev.state.y, y, time.delta * core.smoothing);
+      }
 
-      // TODO: not factoring in interpolation delay like Ship
-      // no interpolation target found, smooth to most recent state
-      this.y = core.lerp(this.y, this.sy, time.delta * core.smoothing);
-
-    // }
-
-    this.x = parseInt(this.sx);
+      // always snap
+      this.x = core.lerp(prev.state.x, x, time.delta * core.smoothing);
+    }
 
     // reload if offscreen
-		if(this.state.y < (0 - this.height)) {
+		if(this.y < (0 - this.height)) {
 			this.reload();
 		}
+
+    // only draw once x interpolates
+    if (this.x === this.sx && typeof callback === 'function') callback();
   };
 
 	Missile.prototype.getState = function() {
