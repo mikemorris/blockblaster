@@ -37,16 +37,16 @@
 
 	Missile.prototype = new Rectangle();
 
-	Missile.prototype.explode = function(store, callback) {
+	Missile.prototype.explode = function(callback) {
 
     var delta = {};
 
 		this.vy = 0;
-    delta['y'] = this.y;
+    delta['vy'] = this.vy;
 
-		this.reload(store, callback);
+		this.reload(callback);
 
-    if (typeof callback === 'function') callback(this.uuid, delta);
+    if (typeof callback === 'function') callback(this, delta);
 
 	};
 
@@ -69,13 +69,15 @@
 		this.isLive = true;
     delta['isLive'] = this.isLive;
 
-    if (typeof callback === 'function') callback(this.uuid, delta);
+    if (typeof callback === 'function') callback(this, delta);
 
 	};
 
-	Missile.prototype.move = function(store, callback) {
+	Missile.prototype.move = function(callback) {
 
     var delta = {};
+
+    var dy = Math.abs(this.sy - this.y);
     var difference;
 
     if (this.sx) {
@@ -83,9 +85,7 @@
     }
 
     if (this.sy) {
-      difference = Math.abs(this.sy - this.y);
-
-      if (difference > 150) {
+      if (dy > 150) {
         this.y = this.sy;
       } else {
         // update reconciled position
@@ -97,11 +97,11 @@
     }
 
     // reload if offscreen
-		if(this.y < (0 - this.height)) {
-			this.reload(store, callback);
+		if(this.state.y < (0 - this.height)) {
+			this.reload(callback);
 		}
 
-    if (typeof callback === 'function') callback(this.uuid, delta);
+    if (typeof callback === 'function') callback(this, delta);
 
 	};
 
@@ -121,7 +121,7 @@
 
   };
 
-	Missile.prototype.reload = function(store, callback) {
+	Missile.prototype.reload = function(callback) {
 
     var delta = {};
 
@@ -137,40 +137,37 @@
 		this.isLive = false;
     delta['isLive'] = this.isLive;
 
-    if (typeof callback === 'function') callback(this.uuid, delta);
+    if (typeof callback === 'function') callback(this, delta);
 
 	};
 
   Missile.prototype.interpolate = function() {
 
     // entity interpolation
-    var difference = Math.abs(this.sy - this.y);
+    var dx = Math.abs(this.sx - this.x);
+    var dy = Math.abs(this.sy - this.y);
+
+    var difference = (!isNaN(dy) && dy < 0.1 && !isNaN(dx) && dx < 0.1);
 
     // return if no server updates to process
-    if (!this.queue.server.length || difference < 0.1) return;
+    if (!this.queue.server.length || difference) return;
 
-    // snap if large difference
-    if (difference > 150) {
-      this.y = this.sy;
-    }
-
+    var x;
     var y;
-    var vy;
-
-    var from;
-    var to;
 
     var count = this.queue.server.length - 1;
 
     var prev;
     var next;
 
+    var from;
+    var to;
+
     for(var i = 0; i < count; i++) {
       prev = this.queue.server[i];
       next = this.queue.server[i + 1];
 
       // if client offset time is between points, break
-      // WARN: not all updates in queue have y position
       if(time.client > prev.time && time.client < next.time) {
         from = prev;
         to = next;
@@ -178,29 +175,36 @@
       }
     }
 
-    // no interpolation from found, snap to most recent state
-    if (!from) {
-      from = to = this.queue.server[this.queue.server.length - 1];
-    }
+    // FIXME: fix interpolation bounce and include interpolation delay in snap
+    // or build alternative to missile object pool
 
-    // calculate client time percentage between to and from points
-    var timePoint = 0;
+    /* if (from && dy < 100) {
+      // calculate client time percentage between to and from points
+      var timePoint = 0;
 
-    if (from.time !== to.time) {
-      var difference = from.time - time.client;
-      var spread = from.time - to.time;
-      timePoint = difference / spread;
-    }
+      if (from.time !== to.time) {
+        var difference = from.time - time.client;
+        var spread = from.time - to.time;
+        timePoint = difference / spread;
+      }
+      
+      // interpolated position
+      y = core.lerp(from.state.y, to.state.y, timePoint);
     
-    // interpolated position
-    y = core.lerp(from.state.y, to.state.y, timePoint);
+      // apply smoothing
+      this.y = core.lerp(this.y, y, time.delta * core.smoothing);
+    } else { */
 
-    // apply smoothing
-    this.x = this.sx;
-    this.y = core.lerp(this.y, y, time.delta * core.smoothing);
+      // TODO: not factoring in interpolation delay like Ship
+      // no interpolation target found, smooth to most recent state
+      this.y = core.lerp(this.y, this.sy, time.delta * core.smoothing);
+
+    // }
+
+    this.x = parseInt(this.sx);
 
     // reload if offscreen
-		if(this.y < (0 - this.height)) {
+		if(this.state.y < (0 - this.height)) {
 			this.reload();
 		}
   };

@@ -127,12 +127,16 @@
                   client_player.ship.reconcile(client, player);
                 } else {
                   // set server state
-                  if (!player.ship.state.x) {
-                    player.ship.state.x = client_player.ship.x;
+                  if (player.ship.state.x) {
+                    client_player.ship.sx = parseInt(player.ship.state.x);
+                  } else {
+                    player.ship.state.x = client_player.ship.sx;
                   }
 
-                  if (!player.ship.state.y) {
-                    player.ship.state.y = client_player.ship.y;
+                  if (player.ship.state.y) {
+                    client_player.ship.sy = parseInt(player.ship.state.y);
+                  } else {
+                    player.ship.state.y = client_player.ship.sy;
                   }
 
                   // set timestamp for interpolation
@@ -175,12 +179,16 @@
 
                   // TODO: cleanup
                   if (clientMissile) {
-                    if (!serverMissile.state.y) {
-                      serverMissile.state.y = clientMissile.sy;
+                    if (serverMissile.state.x) {
+                      clientMissile.sx = parseInt(serverMissile.state.x);
+                    } else {
+                      serverMissile.state.x = clientMissile.sx;
                     }
 
-                    if (!serverMissile.state.x) {
-                      serverMissile.state.x = clientMissile.x;
+                    if (serverMissile.state.y) {
+                      clientMissile.sy = parseInt(serverMissile.state.y);
+                    } else {
+                      serverMissile.state.y = clientMissile.sy;
                     }
 
                     if (serverMissile.state.isLive) {
@@ -333,15 +341,13 @@
         key = keys[i];
         missile = missiles[key];
 
-        if (missile.isLive) {
-          if (interpolate) {
-            missile.interpolate();
-          } else {
-            missile.move();
-          }
-
-          missile.draw(client);
+        if (interpolate) {
+          missile.interpolate();
+        } else {
+          missile.move();
         }
+
+        missile.draw(client);
       }
     };
 

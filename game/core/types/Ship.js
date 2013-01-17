@@ -96,12 +96,11 @@
 
 	Ship.prototype.move = function() {
 
+    var dx = Math.abs(this.sx - this.x);
     var difference;
 
     if (this.sx) {
-      difference = Math.abs(this.sx - this.x);
-
-      if (difference > 150) {
+      if (dx > 150) {
         this.x = this.sx;
       } else {
         // update reconciled position

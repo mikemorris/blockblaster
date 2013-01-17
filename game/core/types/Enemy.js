@@ -121,9 +121,11 @@
 	};
 
   Enemy.prototype.interpolate = function() {
+
     // entity interpolation
     var dx = Math.abs(this.sx - this.x);
     var dy = Math.abs(this.sy - this.y);
+
     var difference = Math.max(dx, dy);
 
     // return if no server updates to process
