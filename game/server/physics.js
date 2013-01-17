@@ -35,18 +35,18 @@
         npc = npcs.global[key];
 
         if(core.isCollision(npc, missile)) {
-          missile.explode(function(missile, delta) {
+          missile.explode(function(uuid, delta) {
             var keys = Object.keys(delta);
             var length = keys.length;
             var key;
 
             for (var i = 0; i < length; i++) {
               key = keys[i];
-              store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
+              store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
             }
           });
 
-          npc.destroy(store, function(missile, delta) {
+          npc.destroy(store, function(uuid, delta) {
             var keys = Object.keys(delta);
             var length = keys.length;
             var key;
@@ -65,7 +65,7 @@
       var uuid = missile.uuid;
 
       if(missile.isLive) {
-        missile.move(function(missile, delta) {
+        missile.move(function(uuid, delta) {
           // double check necessary because of asyncronocity
           // FIXME: last move callback firing after reload callback
           var keys = Object.keys(delta);
@@ -74,7 +74,7 @@
 
           for (var j = 0; j < length; j++) {
             key = keys[j];
-            store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
+            store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
           }
         });
 
@@ -176,14 +176,14 @@
           }
 
           if(move.input.spacebar) {
-            player.ship.fire(store, function(missile, delta) {
+            player.ship.fire(store, function(uuid, delta) {
               var keys = Object.keys(delta);
               var length = keys.length;
               var key;
 
               for (var i = 0; i < length; i++) {
                 key = keys[i];
-                store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
+                store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
               }
             });
           } else {

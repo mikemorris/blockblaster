@@ -46,7 +46,7 @@
 
 		this.reload(callback);
 
-    if (typeof callback === 'function') callback(this, delta);
+    if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
@@ -69,7 +69,7 @@
 		this.isLive = true;
     delta['isLive'] = this.isLive;
 
-    if (typeof callback === 'function') callback(this, delta);
+    if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
@@ -101,7 +101,7 @@
 			this.reload(callback);
 		}
 
-    if (typeof callback === 'function') callback(this, delta);
+    if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
@@ -137,7 +137,7 @@
 		this.isLive = false;
     delta['isLive'] = this.isLive;
 
-    if (typeof callback === 'function') callback(this, delta);
+    if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
