@@ -131,19 +131,8 @@
     // return if no server updates to process
     if (!this.queue.server.length || difference < 0.1) return;
 
-    // snap if large difference
-    if (difference > 200) {
-      // NPCs drift out to extreme positions if server falls asleep
-      this.x = this.sx;
-      this.y = this.sy;
-      return;
-    }
-
     var x;
     var y;
-
-    var target
-    var current;
 
     var count = this.queue.server.length - 1;
 
@@ -154,37 +143,36 @@
       prev = this.queue.server[i];
       next = this.queue.server[i + 1];
 
-      // if client offset time is between points, set target and break
-      if(time.client > prev.time && time.client < next.time) {
-        target = prev;
-        current = next;
-        break;
-      }
+      // if client offset time is between points, break
+      if(time.client > prev.time && time.client < next.time) break;
     }
 
-    // no interpolation target found, snap to most recent state
-    if(!target) {
-      target = current = this.queue.server[this.queue.server.length - 1];
-    }
-
-    // calculate client time percentage between current and target points
-    var timePoint = 0;
-
-    if (target.time !== current.time) {
-      var difference = target.time - time.client;
-      var spread = target.time - current.time;
+    if (prev) {
+      // calculate client time percentage between points
+      var timePoint = 0;
+      var difference = prev.time - time.client;
+      var spread = prev.time - time.server;
       timePoint = difference / spread;
-    }
 
-    // interpolated position
-    if (current.x && target.x) {
-      x = core.lerp(current.x, target.x, timePoint);
-      this.x = core.lerp(this.x, x, time.delta * core.smoothing);
-    }
+      // interpolated position
+      x = core.lerp(prev.x, this.sx, timePoint);
+      y = core.lerp(prev.y, this.sy, timePoint);
 
-    if (current.y && target.y) {
-      y = core.lerp(current.y, target.y, timePoint);
-      this.y = core.lerp(this.y, y, time.delta * core.smoothing);
+      if (dx < 100) {
+        // apply smoothing
+        this.x = core.lerp(this.x, x, time.delta * core.smoothing);
+      } else {
+        // apply smooth snap
+        this.x = core.lerp(prev.x, x, time.delta * core.smoothing);
+      }
+
+      if (dy < 100) {
+        // apply smoothing
+        this.y = core.lerp(this.y, y, time.delta * core.smoothing);
+      } else {
+        // apply smooth snap
+        this.y = core.lerp(prev.y, y, time.delta * core.smoothing);
+      }
     }
   };
 

@@ -16,19 +16,19 @@
 	var Missile = function(ship) {
     this.uuid = uuid ? uuid.v4() : false;
 
-		var properties = {
-			speed: 300,
-			vy: 0,
-			y: 0,
-			x: 0
-		};
-
-		this.set(properties);
-
     this.width = 10;
     this.height = 20;
 
     this.ship = ship;
+
+		var properties = {
+			speed: 300,
+			vy: 0,
+			y: -this.height,
+			x: -this.width
+		};
+
+		this.set(properties);
 
     // interpolation queue
     this.queue = {};

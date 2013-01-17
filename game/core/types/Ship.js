@@ -17,7 +17,6 @@
 })(this, function(core, time, input, Entity, Missile, Image, uuid) {
 
 	var Ship = function(properties) {
-
     this.uuid = uuid ? uuid.v4() : false;
 
 		this.set(properties);
@@ -27,10 +26,6 @@
     // interpolation queue
     this.queue = {};
     this.queue.server = [];
-
-    // interpolation target
-    this.server = {};
-
 	};
 
 	Ship.prototype = new Entity();
