@@ -16,6 +16,11 @@
   // constructor
 	var Player = function(player) {
 
+    // WARN: state must be initialized on entity, NOT prototype chain
+    this.state = {};
+    this.state.private = {};
+    this.state.public = {};
+
 		this.ship = new Ship();
 
     // init from existing state
@@ -60,7 +65,7 @@
 
 	Player.prototype.getState = function() {
     return {
-      state: this.state,
+      state: this.state.private,
       ship: this.ship.getState()
     };
   };

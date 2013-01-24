@@ -36,7 +36,9 @@
     // console.log(data);
 
     // return delta object to client
-    socket.io.sockets.volatile.emit('state:update', data);
+    socket.io.sockets.volatile.emit('state:delta', data);
+
+    // console.log('state:delta', Date.now());
 
   };
 
@@ -51,11 +53,16 @@
     // TODO: get state from redis, not from local
     // get updated states from redis, then return delta object to client
     async.parallel([
-      function(callback) { players.state(store, data, callback) },
-      function(callback) { npcs.state(store, data, callback) }
+      function(callback) { players.state(data, callback); },
+      function(callback) { npcs.state(data, callback); }
     ], function() {
       data.time = Date.now();
+
+      // console.log(data);
+
       socket.io.sockets.volatile.emit('state:full', data);
+
+      // console.log('state:full', Date.now());
 
       /*
       var keys = Object.keys(data.players);

@@ -100,13 +100,10 @@
   };
 
   var isCollision = function(a, b) {
-    // TODO: logging for error state
-    if (!a.state) console.log(a);
-
-    var ax = parseInt(a.state.x);
-    var ay = parseInt(a.state.y);
-    var bx = parseInt(b.state.x);
-    var by = parseInt(b.state.y);
+    var ax = parseInt(a.state.public.x);
+    var ay = parseInt(a.state.public.y);
+    var bx = parseInt(b.state.public.x);
+    var by = parseInt(b.state.public.y);
 
     return  ax <= (bx + b.width) &&
         bx <= (ax + a.width) &&

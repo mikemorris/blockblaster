@@ -16,17 +16,22 @@
 	var Missile = function(ship, missile) {
     this.uuid = missile ? missile.uuid : (uuid ? uuid.v4() : false);
 
+    // WARN: state must be initialized on entity, NOT prototype chain
+    this.state = {};
+    this.state.private = {};
+    this.state.public = {};
+
     this.ship = ship;
 
     this.width = 10;
     this.height = 20;
 
-    this.x = missile ? parseInt(missile.state.x) : -this.width;
-    this.y = missile ? parseInt(missile.state.y) : -this.height;
-
 		var properties = {
-			speed: 300,
-			vy: 0
+      x: missile ? parseInt(missile.state.x) : -this.width,
+      y: missile ? parseInt(missile.state.y) : -this.height,
+      vx: 0,
+			vy: 0,
+			speed: 300
 		};
 
 		this.set(properties);
@@ -38,71 +43,36 @@
 
 	Missile.prototype = new Rectangle();
 
-	Missile.prototype.explode = function(callback) {
+	Missile.prototype.explode = function() {
 
-    var delta = {};
-
-		this.vy = 0;
-    delta['vy'] = this.vy;
-
-		this.reload(callback);
-
-    if (typeof callback === 'function') callback(this.uuid, delta);
+		this.state.private.vy = 0;
+		this.reload();
 
 	};
 
-	Missile.prototype.fire = function(store, callback) {
-
-    var delta = {};
+	Missile.prototype.fire = function() {
 
     if (this.ship) {
-      this.x = this.ship.x + this.ship.width / 2 - this.width / 2;
-      delta['x'] = this.x;
+      this.state.private.x = this.ship.state.private.x + this.ship.width / 2 - this.width / 2;
 
-      this.y = this.ship.y;
-      delta['y'] = this.y;
+      this.state.private.y = this.ship.state.private.y;
     }
 
-		this.vy = this.speed;
-    delta['vy'] = this.vy;
+		this.state.private.vy = this.state.private.speed;
 
     // switch missile to active state
-		this.isLive = true;
-    delta['isLive'] = this.isLive;
-
-    if (typeof callback === 'function') callback(this.uuid, delta);
+		this.state.private.isLive = true;
 
 	};
 
-	Missile.prototype.move = function(callback) {
+	Missile.prototype.move = function() {
 
-    var delta = {};
-
-    var dy = Math.abs(this.sy - this.y);
-    var difference;
-
-    if (this.sx) {
-      this.x = this.sx;
-    }
-
-    if (this.sy) {
-      if (dy > 150) {
-        this.y = this.sy;
-      } else {
-        // update reconciled position
-        this.y = core.lerp(this.y, this.sy, time.delta * core.smoothing);
-      }
-    } else {
-      this.y -= this.vy * time.delta;
-      delta['y'] = this.y;
-    }
+    this.state.private.y -= this.state.private.vy * time.delta;
 
     // reload if offscreen
-		if(this.state.y < (0 - this.height)) {
-			this.reload(callback);
+		if(this.state.private.y < (0 - this.height)) {
+			this.reload();
 		}
-
-    if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
@@ -114,38 +84,31 @@
 
     // update reconciled position with client prediction
     // server position plus dead reckoning
-    dy = parseInt(this.vy * time.delta);
+    dy = parseInt(this.state.private.vy * time.delta);
 
     // set reconciled position
-    this.sx = parseInt(data.state.x);
-    this.sy = parseInt(data.state.y) + dy;
+    this.state.private.x = parseInt(data.state.x);
+    this.state.private.y = parseInt(data.state.y) + dy;
 
   };
 
-	Missile.prototype.reload = function(callback) {
+	Missile.prototype.reload = function() {
 
-    var delta = {};
-
-		this.x = -this.height;
-    delta['x'] = this.x;
+		this.state.private.x = -this.height;
 
     if (this.ship) {
-      this.y = this.ship.y;
-      delta['y'] = this.y;
+      this.state.private.y = this.ship.state.private.y;
     }
 
     // reload missile
-		this.isLive = false;
-    delta['isLive'] = this.isLive;
-
-    if (typeof callback === 'function') callback(this.uuid, delta);
+		this.state.private.isLive = false;
 
 	};
 
   Missile.prototype.interpolate = function(callback) {
 
     // entity interpolation
-    var dy = Math.abs(this.sy - this.y);
+    var dy = Math.abs(this.state.public.y - this.state.private.y);
 
     // return if no server updates to process
     if (!this.queue.server.length) return;
@@ -174,37 +137,37 @@
       timePoint = difference / spread;
 
       // interpolated position
-      x = core.lerp(prev.state.x, this.sx, timePoint);
-      y = core.lerp(prev.state.y, this.sy, timePoint);
+      x = core.lerp(prev.state.x, this.state.public.x, timePoint);
+      y = core.lerp(prev.state.y, this.state.public.y, timePoint);
     
       if (dy < 100) {
         // apply smoothing
-        this.y = core.lerp(this.y, y, time.delta * core.smoothing);
+        this.state.private.y = core.lerp(this.state.private.y, y, time.delta * core.smoothing);
       } else {
         // apply smooth snap
-        this.y = core.lerp(prev.state.y, y, time.delta * core.smoothing);
+        this.state.private.y = core.lerp(prev.state.y, y, time.delta * core.smoothing);
       }
 
       // always snap
-      this.x = core.lerp(prev.state.x, x, time.delta * core.smoothing);
+      this.state.private.x = core.lerp(prev.state.x, x, time.delta * core.smoothing);
     }
 
     // reload if offscreen
-		if(this.y < (0 - this.height)) {
+		if(this.state.private.y < (0 - this.height)) {
 			this.reload();
 		}
 
     // only draw once x interpolates
-    if (this.x === this.sx && typeof callback === 'function') callback();
+    if (this.state.private.x === this.state.public.x && typeof callback === 'function') callback();
   };
 
 	Missile.prototype.getState = function() {
     return {
       uuid: this.uuid,
       state: {
-        y: this.y,
-        x: this.x,
-        isLive: this.isLive
+        y: this.state.private.y,
+        x: this.state.private.x,
+        isLive: this.state.private.isLive
       }
     };
   };

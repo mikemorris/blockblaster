@@ -11,6 +11,12 @@
 })(this, function(Entity) {
 
 	var Image = function(src) {
+
+    // WARN: state must be initialized on entity, NOT prototype chain
+    this.state = {};
+    this.state.private = {};
+    this.state.public = {};
+
 		var properties = {
       x: 0,
       y: 0

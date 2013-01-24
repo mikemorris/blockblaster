@@ -98,20 +98,8 @@
     });
 
     socket.on('disconnect', function() {
-      // remove player and ship from redis set (only if session client)
-      // TODO: save if permanent login
-      rc.multi()
-        .srem('player', player.uuid)
-        .del('player:' + player.uuid)
-        .exec(function(err, res) {
-          destroyChildren(rc, player.uuid, function() {
-            // close redis client
-            rc.quit();
-
-            // remove player from server
-            players.remove(player.uuid);
-          });
-        });
+      // remove player from server
+      players.remove(players, player.uuid);
     });
 
   };
@@ -125,60 +113,7 @@
     player.uuid = uuid.v4();
     socket.emit('uuid', player.uuid);
 
-    async.parallel(
-      [
-        function(callback) {
-          // add player to redis set
-          // init player state in redis
-          rc.multi()
-            .sadd('player', player.uuid)
-            .hset('player:' + player.uuid, 'ship', player.ship.uuid)
-            .hset('parent', 'ship+' + player.ship.uuid, 'player+' + player.uuid)
-            .hmset('ship:' + player.ship.uuid, 
-              'x', player.ship.x,
-              'y', player.ship.y,
-              'speed', player.ship.speed,
-              'vx', player.ship.vx
-            )
-            .exec(function(err, res) {
-              // notify async.parallel that recursion has completed
-              if (typeof callback === 'function') callback();
-            });
-        },
-        function(callback) {
-          var missiles = player.ship.missiles;
-
-          // init missiles
-          async.forEach(
-            missiles,
-            function(missile, callback) {
-              rc.multi()
-                .hset('parent', 'missile+' + missile.uuid, 'ship+' + player.ship.uuid)
-                .hmset('missile:' + missile.uuid,
-                  'x', missile.x,
-                  'y', missile.y,
-                  'speed', missile.speed,
-                  'vy', missile.vy,
-                  'isLive', missile.isLive
-                )
-                .exec(
-                  function(err, res) {
-                    // notify async.forEach that recursion has completed
-                    if (typeof callback === 'function') callback();
-                  }
-                );
-            },
-            function() {
-              // notify async.parallel that recursion has completed
-              if (typeof callback === 'function') callback();
-            }
-          );
-        }
-      ],
-      function() {
-        addPlayer(socket, rc, player);
-      }
-    );
+    addPlayer(socket, rc, player);
 
   };
 

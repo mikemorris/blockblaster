@@ -53,7 +53,6 @@
         } else if (player) {
           // if defined on server but not on client, create new Player on client
           client.players[uuid] = new Player(player);
-          // console.log(client.players[uuid]);
         } else {
           delete client.players[uuid];
         }
@@ -71,12 +70,12 @@
         if (npc && client.npcs[uuid]) {
           // TODO: if defined on server and client, update state
         } else if (npc) {
-          if (isNaN(npc.x) || isNaN(npc.y) || isNaN(npc.direction)) debugger;
+          if (isNaN(npc.state.x) || isNaN(npc.state.y) || isNaN(npc.state.direction)) debugger;
 
           // if defined on server but not on client, create new NPC on client
-          client.npcs[uuid] = new Enemy(parseInt(npc.x), parseInt(npc.y), parseInt(npc.direction), uuid);
-          client.npcs[uuid].sx = parseInt(npc.x);
-          client.npcs[uuid].sy = parseInt(npc.y);
+          client.npcs[uuid] = new Enemy(parseInt(npc.state.x), parseInt(npc.state.y), parseInt(npc.state.direction), uuid);
+          client.npcs[uuid].state.public.x = parseInt(npc.state.x);
+          client.npcs[uuid].state.public.y = parseInt(npc.state.y);
         } else {
           delete client.npcs[uuid];
         }
@@ -85,8 +84,7 @@
     });
 
     // listen for delta updates
-    socket.on('state:update', function(data) {
-
+    socket.on('state:delta', function(data) {
       // update server time (used for entity interpolation)
       time.server = data.time;
       time.client = time.server - core.offset;
@@ -110,8 +108,8 @@
           client_player = client.players[uuid];
 
           // update last acknowledged input
-          if (player.ack) {
-            client_player.ship.ack = player.ack;
+          if (player.state && player.state.ack) {
+            client_player.ship.ack = player.state.ack;
           }
 
           // TODO: clean this up
@@ -121,9 +119,6 @@
             if (player.ship) {
 
               if (player.ship.state) {
-                if (player.ship.state.y) {
-                  client_player.ship.sy = parseInt(player.ship.state.y);
-                }
 
                 if (uuid === client.uuid) {
                   // reconcile client prediction with server
@@ -131,15 +126,15 @@
                 } else {
                   // set server state
                   if (player.ship.state.x) {
-                    client_player.ship.sx = parseInt(player.ship.state.x);
+                    client_player.ship.state.public.x = parseInt(player.ship.state.x);
                   } else {
-                    player.ship.state.x = client_player.ship.sx;
+                    player.ship.state.x = client_player.ship.state.public.x;
                   }
 
                   if (player.ship.state.y) {
-                    client_player.ship.sy = parseInt(player.ship.state.y);
+                    client_player.ship.state.public.y = parseInt(player.ship.state.y);
                   } else {
-                    player.ship.state.y = client_player.ship.sy;
+                    player.ship.state.y = client_player.ship.state.public.y;
                   }
 
                   // set timestamp for interpolation
@@ -182,20 +177,22 @@
 
                   // TODO: cleanup
                   if (clientMissile) {
-                    if (serverMissile.state.x) {
-                      clientMissile.sx = parseInt(serverMissile.state.x);
+                    if (_.isNumber(serverMissile.state.x)) {
+                      clientMissile.state.public.x = parseInt(serverMissile.state.x);
                     } else {
-                      serverMissile.state.x = clientMissile.sx;
+                      serverMissile.state.x = clientMissile.state.public.x;
                     }
 
-                    if (serverMissile.state.y) {
-                      clientMissile.sy = parseInt(serverMissile.state.y);
+                    if (_.isNumber(serverMissile.state.y)) {
+                      clientMissile.state.public.y = parseInt(serverMissile.state.y);
                     } else {
-                      serverMissile.state.y = clientMissile.sy;
+                      serverMissile.state.y = clientMissile.state.public.y;
                     }
 
-                    if (serverMissile.state.isLive) {
-                      clientMissile.isLive = (serverMissile.state.isLive === 'true');
+                    if (_.isBoolean(serverMissile.state.isLive)) {
+                      clientMissile.state.public.isLive = serverMissile.state.isLive;
+                    } else {
+                      serverMissile.state.isLive = clientMissile.state.public.isLive;
                     }
 
                     // set timestamp for interpolation
@@ -242,22 +239,37 @@
           client_npc = client.npcs[uuid];
 
           if (client_npc) {
+
             // interpolate destroy animation?
-            client_npc.isHit = npc.isHit ? true : false;
-
-            if (npc.y) {
-              client_npc.sy = parseInt(npc.y);
+            if (npc.state.isHit) {
+              client_npc.state.public.isHit = parseInt(npc.state.isHit);
             } else {
-              npc.y = client_npc.sy;
+              npc.state.isHit = client_npc.state.public.isHit;
             }
 
-            if (npc.x) {
-              client_npc.sx = parseInt(npc.x);
+            if (npc.state.y) {
+              client_npc.state.public.y = parseInt(npc.state.y);
             } else {
-              npc.x = client_npc.sx;
+              npc.state.y = client_npc.state.public.y;
             }
 
-            client_npc.rotation = parseInt(npc.rotation);
+            if (npc.state.x) {
+              client_npc.state.public.x = parseInt(npc.state.x);
+            } else {
+              npc.state.x = client_npc.state.public.x;
+            }
+
+            if (npc.state.rotation) {
+              client_npc.state.public.rotation = parseInt(npc.state.rotation);
+            } else {
+              npc.state.rotation = client_npc.state.public.rotation;
+            }
+
+            if (npc.state.rotation) {
+              client_npc.state.public.rotation = parseInt(npc.state.rotation);
+            } else {
+              npc.state.rotation = client_npc.state.public.rotation;
+            }
 
             // set timestamp for interpolation
             npc.time = time.client;
@@ -347,7 +359,7 @@
           return missile.uuid === uuid;
         });
 
-        if (missile && missile.isLive) {
+        if (missile && missile.state.public.isLive) {
           if (interpolate) {
             missile.interpolate(function() {
               missile.draw(client);
@@ -379,6 +391,7 @@
           client.socket.emit('command:send', input);
         });
 
+        // console.log(player.ship.state.private);
         player.ship.move();
 
       }
@@ -396,7 +409,7 @@
     var npc;
 
     // TODO: is this loop syntax faster?
-    for (var i = length; i--;) {
+    for (var i = 0; i < length; i++) {
       uuid = npcs[i];
       npc = client.npcs[uuid];
 

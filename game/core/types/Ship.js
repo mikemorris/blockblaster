@@ -19,7 +19,13 @@
 	var Ship = function(properties) {
     this.uuid = uuid ? uuid.v4() : false;
 
+    // WARN: state must be initialized on entity, NOT prototype chain
+    this.state = {};
+    this.state.private = {};
+    this.state.public = {};
+
 		this.set(properties);
+
 		this.setDefaults();
 		this.loadMissiles();
 
@@ -38,16 +44,17 @@
 		this.then = 0;
 		this.height = 50;
 		this.width = 50;
+    this.maxMissiles = 3;
+    this.repeatRate = 30;
 
 		var properties = {
       x: 20,
       y: 380,
       vx: 0,
-
-      // user defineable settings
-      speed: this.speed || 300,
-      maxMissiles: this.maxMissiles || 3,
-      repeatRate: this.repeatRate || 30
+      vy: 0,
+      speed: 300,
+      rotation: 0,
+      scale: 1
     };
 
     this.set(properties);
@@ -59,7 +66,7 @@
     var fireButtonChanged = false;
     var input;
 
-    this.vx = parseInt(this.speed * time.delta * vector.dx);
+    this.state.private.vx = parseInt(this.state.private.speed * time.delta * vector.dx);
 
 		if(pressed.spacebar) {
 			this.fire();
@@ -71,7 +78,7 @@
 			this.fireButtonReleased = true;
 		}
 
-    if (this.vx || pressed.spacebar || fireButtonChanged) {
+    if (this.state.private.vx || pressed.spacebar || fireButtonChanged) {
 
       // create input object
       input = {
@@ -79,7 +86,7 @@
         seq: client.seq++,
         input: pressed,
         data: {
-          speed: this.speed,
+          speed: this.state.private.speed,
           vector: vector
         }
       };
@@ -91,23 +98,14 @@
 
 	Ship.prototype.move = function() {
 
-    var dx = Math.abs(this.sx - this.x);
-    var difference;
-
-    if (this.sx) {
-      if (dx > 150) {
-        this.x = this.sx;
-      } else {
-        // update reconciled position
-        this.x = core.lerp(this.x, this.sx, time.delta * core.smoothing);
-      }
-    } else {
-      this.x += this.vx * time.delta;
-    }
+    this.state.private.x += this.state.private.vx;
 
 	};
 
   Ship.prototype.reconcile = function(client, player) {
+
+    var x;
+    var y;
 
     // server reconciliation
     var dx = 0;
@@ -133,22 +131,25 @@
       dx += parseInt(queue[i].data.speed * queue[i].data.vector.dx * time.delta);
     }
 
+    // reconciled prediction
+    x = parseInt(player.ship.state.x) + dx;
+
     // set reconciled position
-    this.sx = parseInt(player.ship.state.x) + dx;
+    this.state.private.x = core.lerp(this.state.private.x, x, time.delta * core.smoothing);
 
   };
 
   Ship.prototype.interpolate = function() {
 
     // entity interpolation
-    var difference = Math.abs(this.sx - this.x);
+    var difference = Math.abs(this.state.public.x - this.state.private.x);
 
     // return if no server updates to process
     if (!this.queue.server.length) return;
 
     // snap if large difference
     if (difference < 0.1 || difference > 200) {
-      this.x = this.sx;
+      this.state.private.x = this.state.public.x;
       return;
     }
 
@@ -193,7 +194,7 @@
     x = core.lerp(from.state.x, to.state.x, timePoint);
 
     // apply smoothing
-    this.x = core.lerp(this.x, x, time.delta * core.smoothing);
+    this.state.private.x = core.lerp(this.state.private.x, x, time.delta * core.smoothing);
 
   };
 
@@ -220,7 +221,7 @@
       key = keys[i];
       missile = this.missiles[key];
 
-      if (!missile.isLive) {
+      if (!missile.state.private.isLive) {
         missiles.push(missile);
       }
     }
@@ -267,7 +268,7 @@
 
     return {
       uuid: this.uuid,
-      state: this.state,
+      state: this.state.private,
       missiles: missiles
     };
   };

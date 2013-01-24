@@ -35,27 +35,8 @@
         npc = npcs.global[key];
 
         if(core.isCollision(npc, missile)) {
-          missile.explode(function(uuid, delta) {
-            var keys = Object.keys(delta);
-            var length = keys.length;
-            var key;
-
-            for (var i = 0; i < length; i++) {
-              key = keys[i];
-              store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
-            }
-          });
-
-          npc.destroy(store, function(uuid, delta) {
-            var keys = Object.keys(delta);
-            var length = keys.length;
-            var key;
-
-            for (var i = 0; i < length; i++) {
-              key = keys[i];
-              store.hset('npc:' + uuid, key, delta[key], function(err, res) {});
-            }
-          });
+          missile.explode();
+          npc.destroy();
         }
       }
     };
@@ -64,20 +45,8 @@
       var missile = missiles[i];
       var uuid = missile.uuid;
 
-      if(missile.isLive) {
-        missile.move(function(uuid, delta) {
-          // double check necessary because of asyncronocity
-          // FIXME: last move callback firing after reload callback
-          var keys = Object.keys(delta);
-          var length = keys.length;
-          var key;
-
-          for (var j = 0; j < length; j++) {
-            key = keys[j];
-            store.hset('missile:' + uuid, key, delta[key], function(err, res) {});
-          }
-        });
-
+      if(missile.state.private.isLive) {
+        missile.move();
         checkCollisions(missile);
       }
     }
@@ -92,28 +61,10 @@
         var uuid = keys[i];
         var npc = npcs.global[uuid];
 
-        if(npc.isDestroyed) {
-          npcs.remove(uuid);
-
-          store.multi()
-            .srem('npc', uuid)
-            .del('npc:' + uuid)
-            .zrem('expire', 'npc+' + uuid)
-            .exec(function(err, res) {});
+        if(npc.state.private.isDestroyed) {
+          npcs.remove(npcs, uuid);
         } else {
-          npc.move(store, function(missile, delta) {
-            var keys = Object.keys(delta);
-            var length = keys.length;
-            var key;
-
-            for (var i = 0; i < length; i++) {
-              key = keys[i];
-              store.hset('npc:' + uuid, key, delta[key], function(err, res) {});
-            }
-
-            // expire all NPCs to clean redis on server crash
-            store.zadd('expire', Date.now(), 'npc+' + uuid, function(err, res) {});
-          });
+          npc.move();
         }
       })(i);
     }
@@ -161,19 +112,8 @@
           vx = parseInt(move.data.speed * time.delta * vector.dx);
           vy = parseInt(move.data.speed * time.delta * vector.dy);
 
-          // pipe valid commands directly to redis
-          // passing a negative value to redis.incrby() decrements
-          if (vx !== 0) {
-            store.hincrby('ship:' + player.ship.uuid, 'x', vx, function(err, res) {
-              player.ship.x = res;
-            });
-          }
-
-          if (vy !== 0) {
-            store.hincrby('ship:' + player.ship.uuid, 'y', vy, function(err, res) {
-              player.ship.y = res;
-            });
-          }
+          player.ship.state.private.x += vx;
+          player.ship.state.private.y += vy;
 
           if(move.input.spacebar) {
             player.ship.fire(store, function(uuid, delta) {
@@ -193,9 +133,7 @@
 
           // update ack
           if (move.seq > player.ack) {
-            store.hset('player:' + uuid, 'ack', move.seq, function(err, res) {
-              player.ack = res;
-            });
+            player.state.private.ack = move.seq;
           }
 
           // only expire socket or browser session clients

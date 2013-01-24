@@ -17,21 +17,27 @@
 	var Enemy = function(x, y, direction, id) {
     this.uuid = id ? id : (uuid ? uuid.v4() : false);
 
+    // WARN: state must be initialized on entity, NOT prototype chain
+    this.state = {};
+    this.state.private = {};
+    this.state.public = {};
+
 		var properties = {
 			x: x + core.getRandomNumber(-25, 25),
 			y: y,
 			speed: 100,
 			vx: 100,
       vy: 0,
-			direction: direction || 1
+			direction: direction || 1,
+      color: 'rgba(0, 0, 255, 0.25)',
+      rotation: 0,
+      scale: 1
 		};
 
 		this.set(properties);
 
-    this.y = y;
     this.width = 50;
     this.height = 30;
-    this.color = 'rgba(0, 0, 255, 0.25)';
     this.image = Image ? new Image('images/enemy.png') : false;
 
     this.missiles = [];
@@ -51,23 +57,16 @@
 
 	Enemy.prototype = new Entity();
 
-	Enemy.prototype.destroy = function(store, callback) {
+	Enemy.prototype.destroy = function() {
 
-    var delta = {};
-
-		this.isHit = true;
-    delta['isHit'] = this.isHit;
-
-		this.vy = -200;
-    delta['vy'] = this.vy;
-
-    if (typeof callback === 'function') callback(this.uuid, delta);
+		this.state.private.isHit = true;
+		this.state.private.vy = -200;
 
 	};
 
 	Enemy.prototype.drawType = function(client) {
 		if(core.debug) {
-			if(this.isDestroyed) {
+			if(this.state.private.isDestroyed) {
 				this.color = 'red';
 			}
 			// Show hit-area
@@ -78,53 +77,34 @@
 		this.image.draw(client);
 	};
 
-	Enemy.prototype.move = function(store, callback) {
+	Enemy.prototype.move = function() {
 
-    var delta = {};
-    var difference;
-
-    if (this.sx) {
-      difference = Math.abs(this.sx - this.x);
-
-      if (difference > 150) {
-        this.x = this.sx;
-      } else {
-        // update reconciled position
-        this.x = core.lerp(this.x, this.sx, time.delta * core.smoothing);
-      }
-    } else {
-      this.x += this.vx * this.direction * time.delta;
-      delta['x'] = this.x;
-    }
+    this.state.private.x += this.state.private.vx * this.state.private.direction * time.delta;
 
     // missile impact
-		if(this.isHit) {
-			this.y += this.vy * time.delta;
-      delta['y'] = this.y;
+		if(this.state.private.isHit) {
 
-			this.rotation += 20 * time.delta;
-      delta['rotation'] = this.rotation;
+			this.state.private.y += this.state.private.vy * time.delta;
+			this.state.private.rotation += 20 * time.delta;
+			this.state.private.isDestroyed = this.state.private.y < -Math.max(this.height, this.width);
 
-			this.isDestroyed = this.y < -Math.max(this.height, this.width);
 		} else {
-			if(this.x > this.origin.x + this.range) {
-				this.direction = -1;
-			} else if (this.x < this.origin.x - this.range) {
-				this.direction = 1;
+
+			if(this.state.private.x > this.origin.x + this.range) {
+				this.state.private.direction = -1;
+			} else if (this.state.private.x < this.origin.x - this.range) {
+				this.state.private.direction = 1;
 			}
 
-      delta['direction'] = this.direction;
 		}
-
-    if (typeof callback === 'function') callback(this.uuid, delta);
 
 	};
 
   Enemy.prototype.interpolate = function() {
 
     // entity interpolation
-    var dx = Math.abs(this.sx - this.x);
-    var dy = Math.abs(this.sy - this.y);
+    var dx = Math.abs(this.state.public.x - this.state.private.x);
+    var dy = Math.abs(this.state.public.y - this.state.private.y);
 
     var difference = Math.max(dx, dy);
 
@@ -155,32 +135,35 @@
       timePoint = difference / spread;
 
       // interpolated position
-      x = core.lerp(prev.x, this.sx, timePoint);
-      y = core.lerp(prev.y, this.sy, timePoint);
+      x = core.lerp(prev.state.x, this.state.public.x, timePoint);
+      y = core.lerp(prev.state.y, this.state.public.y, timePoint);
 
       if (dx < 100) {
         // apply smoothing
-        this.x = core.lerp(this.x, x, time.delta * core.smoothing);
+        this.state.private.x = core.lerp(this.state.private.x, x, time.delta * core.smoothing);
       } else {
         // apply smooth snap
-        this.x = core.lerp(prev.x, x, time.delta * core.smoothing);
+        this.state.private.x = core.lerp(prev.state.x, x, time.delta * core.smoothing);
       }
 
       if (dy < 100) {
         // apply smoothing
-        this.y = core.lerp(this.y, y, time.delta * core.smoothing);
+        this.state.private.y = core.lerp(this.state.private.y, y, time.delta * core.smoothing);
       } else {
         // apply smooth snap
-        this.y = core.lerp(prev.y, y, time.delta * core.smoothing);
+        this.state.private.y = core.lerp(prev.state.y, y, time.delta * core.smoothing);
       }
     }
   };
 
   Enemy.prototype.getState = function() {
-    // only return state with keys
-    // this.state initialized as {} in Entity
-    if (Object.keys(this.state).length) {
-      return this.state;
+    // only return state.private with keys
+    // this.state.private initialized as {} in Entity
+    if (Object.keys(this.state.private).length) {
+      return {
+        uuid: this.uuid,
+        state: this.state.private
+      }
     }
   };
 

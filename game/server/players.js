@@ -26,40 +26,18 @@
     var vx = parseInt(move.data.speed * time.delta * vector.dx);
     var vy = parseInt(move.data.speed * time.delta * vector.dy);
 
-    // pipe valid commands directly to redis
-    // passing a negative value to redis.incrby() decrements
-    if (vx !== 0) {
-      store.hincrby('ship:' + player.ship.uuid, 'x', vx, function(err, res) {
-        player.ship.x = res;
-      });
-    }
-
-    if (vy !== 0) {
-      store.hincrby('ship:' + player.ship.uuid, 'y', vy, function(err, res) {
-        player.ship.y = res;
-      });
-    }
+    player.ship.state.private.x += vx;
+    player.ship.state.private.y += vy;
 
     if(move.input.spacebar) {
-      player.ship.fire(store, function(missile, delta) {
-        var keys = Object.keys(delta);
-        var length = keys.length;
-        var key;
-
-        for (var i = 0; i < length; i++) {
-          key = keys[i];
-          store.hset('missile:' + missile.uuid, key, delta[key], function(err, res) {});
-        }
-      });
+      player.ship.fire();
     } else {
       player.ship.fireButtonReleased = true;
     }
 
     // update ack
     if (move.seq > player.ack) {
-      store.hset('player:' + missile.uuid, 'ack', move.seq, function(err, res) {
-        player.ack = res;
-      });
+      player.state.private.ack = move.seq;
     }
 
   };
@@ -77,79 +55,120 @@
     if (typeof callback === 'function') callback();
   };
 
-  var state = function(store, data, callback) {
+  var state = function(data, callback) {
 
-    // TODO: pass in set name as argument
-    store.smembers('player', (function(err, res) {
+    async.forEach(
+      this.local,
+      (function(uuid, callback) {
+        var player = this.global[uuid];
 
-      async.forEach(
-        _.union(Object.keys(this.global), res),
-        (function(uuid, callback) {
-          // get delta for all players
-          var player = this.global[uuid];
+        data.players[uuid] = player.getState();
 
-          if (_.contains(res, uuid) && player) {
-            data.players[uuid] = player.getState();
-
-            // notify async.forEach that function has completed
-            if (typeof callback === 'function') callback();
-          } else if (_.contains(res, uuid)) {
-            // add player to global object
-            add(store, data, this.global, uuid, callback);
-          } else {
-            remove(this, uuid, callback);
-          }
-        }).bind(this), function() {
-          // notify calling function that iterator has completed
-          if (typeof callback === 'function') callback();
-        }
-      );
-    }).bind(this));
+        // notify async.forEach that function has completed
+        if (typeof callback === 'function') callback();
+      }).bind(this), function() {
+        // notify calling function that iterator has completed
+        if (typeof callback === 'function') callback();
+      }
+    );
 
   };
 
   var delta = function(store, data, callback) {
 
-    // TODO: pass in set name as argument
-    store.smembers('player', (function(err, res) {
+    async.forEach(
+      this.local,
+      (function(uuid, callback) {
+        // get delta for all players
+        var player = this.global[uuid];
 
-      async.forEach(
-        res,
-        (function(uuid, callback) {
-          // get delta for all players
-          var player = this.global[uuid];
-
-          if (player) {
-            getDelta(store, data, this.local, uuid, player, callback);
-          } else {
-            // add player to global object
-            add(store, data, this.global, uuid, callback);
-          }
-        }).bind(this), function() {
-          // notify calling function that iterator has completed
-          if (typeof callback === 'function') callback();
+        if (player) {
+          getDelta(store, data, this.local, uuid, player, callback);
+        } else {
+          // add player to global object
+          add(store, data, this.global, uuid, callback);
         }
-      );
-
-    }).bind(this));
+      }).bind(this), function() {
+        // notify calling function that iterator has completed
+        if (typeof callback === 'function') callback();
+      }
+    );
 
   };
 
   var getDelta = function(store, data, local, uuid, player, callback) {
 
-    // TODO: DRY THIS UP!!!
-    // TODO: make this recursive????
-    // defer to redis for absolute state, delta compression
-    store.hgetall('player:' + uuid, function(err, res) {
-      
-      if (res) {
-        var delta = {};
+    var delta = {};
 
+    // PLAYER
+    // save reference to old values and update state
+    // WARN: clone produces shallow copy
+    var prev = player.state.public;
+    var next = player.state.public = _.clone(player.state.private);
+
+    // init delta array for changed keys
+    var deltaKeys = [];
+
+    // iterate over new values and compare to old
+    var keys = Object.keys(next);
+    var length = keys.length;
+    var key;
+
+    for (var i = 0; i < length; i++) {
+      key = keys[i];
+
+      // check for changed values and push key to deltaKeys array
+      if (prev[key] !== next[key]) {
+        deltaKeys.push(key);
+      }
+    }
+
+    // set changed values in data object
+    if (deltaKeys.length > 0) {
+      delta.state = _.pick(next, deltaKeys);
+    }
+
+    // SHIP
+    // save reference to old values and update state
+    // WARN: clone produces shallow copy
+    prev = player.ship.state.public;
+    next = player.ship.state.public = _.clone(player.ship.state.private);
+
+    // init delta array for changed keys
+    deltaKeys = [];
+
+    // iterate over new values and compare to old
+    keys = Object.keys(next);
+    length = keys.length;
+    key;
+
+    for (var j = 0; j < length; j++) {
+      key = keys[j];
+
+      // check for changed values and push key to deltaKeys array
+      if (prev[key] !== next[key]) {
+        deltaKeys.push(key);
+      }
+    }
+
+    // set changed values in data object
+    if (deltaKeys.length) {
+      delta.ship = {};
+      delta.ship.state = _.pick(next, deltaKeys);
+    }
+
+    // MISSILES
+    // init missiles
+    var missiles = {};
+
+    // iterate over missiles
+    async.forEach(
+      player.ship.missiles,
+      function(missile, callback) {
         // save reference to old values and update state
-        var prev = player.state;
-
-        // some scope issues with iterating over res and updating values individually?
-        var next = player.state = res || {};
+        // WARN: clone produces shallow copy
+        var prev = missile.state.public;
+        var next = missile.state.public = _.clone(missile.state.private);
 
         // init delta array for changed keys
         var deltaKeys = [];
@@ -159,8 +178,8 @@
         var length = keys.length;
         var key;
 
-        for (var i = 0; i < length; i++) {
-          key = keys[i];
+        for (var k = 0; k < length; k++) {
+          key = keys[k];
 
           // check for changed values and push key to deltaKeys array
           if (prev[key] !== next[key]) {
@@ -169,134 +188,31 @@
         }
 
         // set changed values in data object
-        if (deltaKeys.length > 0) {
-          delta.state = _.pick(next, deltaKeys);
+        if (deltaKeys.length) {
+          var deltaMissile = {};
+          deltaMissile.state = _.pick(next, deltaKeys);
+          missiles[missile.uuid] = deltaMissile;
         }
-        
-        store.hgetall('ship:' + next.ship, function(err, res) {
 
-          if (res) {
-            // save reference to old values and update state
-            var prev = player.ship.state;
-
-            // some scope issues with iterating over res and updating values individually?
-            var next = player.ship.state = res;
-
-            if (next) {
-
-              // init delta array for changed keys
-              var deltaKeys = [];
-
-              // iterate over new values and compare to old
-              var keys = Object.keys(next);
-              var length = keys.length;
-              var key;
-
-              for (var i = 0; i < length; i++) {
-                key = keys[i];
-
-                // check for changed values and push key to deltaKeys array
-                if (prev[key] !== next[key]) {
-                  deltaKeys.push(key);
-                }
-              }
-
-              // set changed values in data object
-              if (deltaKeys.length) {
-                delta.ship = {};
-                delta.ship.state = _.pick(next, deltaKeys);
-              }
-
-              // init missiles
-              var missiles = {};
-
-              // iterate over missiles
-              async.forEach(
-                player.ship.missiles,
-                function(missile, callback) {
-
-                  store.hgetall('missile:' + missile.uuid, function(err, res) {
-
-                    if (res) {
-                      // save reference to old values and update state
-                      var prev = missile.state;
-
-                      // some scope issues with iterating over res and updating values individually?
-                      var next = missile.state = res;
-
-                      if (next) {
-                        // init delta array for changed keys
-                        var deltaKeys = [];
-
-                        // iterate over new values and compare to old
-                        var keys = Object.keys(next);
-                        var length = keys.length;
-                        var key;
-
-                        for (var i = 0; i < length; i++) {
-                          key = keys[i];
-
-                          // check for changed values and push key to deltaKeys array
-                          if (prev[key] !== next[key]) {
-                            deltaKeys.push(key);
-                          }
-                        }
-
-                        // set changed values in data object
-                        if (deltaKeys.length) {
-                          var deltaMissile = {};
-                          deltaMissile.state = _.pick(next, deltaKeys);
-                          missiles[missile.uuid] = deltaMissile;
-                        }
-                      }
-                    }
-
-                    // notify async.forEach that iterator has completed
-                    if (typeof callback === 'function') callback();
-
-                  });
-
-                },
-                function() {
-                  if (Object.keys(missiles).length) {
-                    delta.ship = delta.ship || {};
-                    delta.ship.missiles = missiles;
-                  }
-
-                  // set changed values in data object
-                  if (Object.keys(delta).length) {
-                    delta.time = Date.now();
-                    data.players[uuid] = delta;
-                  }
-
-                  // notify async that iterator has completed
-                  if (typeof callback === 'function') callback();
-                  
-                }
-              );
-            } else {
-              // set changed values in data object
-              if (Object.keys(delta).length) {
-                delta.time = Date.now();
-                data.players[uuid] = delta;
-              }
-
-              // notify async.forEach that iterator has completed
-              if (typeof callback === 'function') callback();
-            }
-          } else {
-            // notify async.forEach that iterator has completed
-            if (typeof callback === 'function') callback();
-          }
-
-        });
-      } else {
         // notify async.forEach that iterator has completed
         if (typeof callback === 'function') callback();
+      },
+      function() {
+        if (Object.keys(missiles).length) {
+          delta.ship = delta.ship || {};
+          delta.ship.missiles = missiles;
+        }
+
+        // set changed values in data object
+        if (Object.keys(delta).length) {
+          delta.time = Date.now();
+          data.players[uuid] = delta;
+        }
+
+        // notify async that iterator has completed
+        if (typeof callback === 'function') callback();
       }
-
-    });
-
+    );
   };
 
   var getMissile = function(store, player, uuid, callback) {

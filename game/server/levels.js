@@ -9,7 +9,7 @@
   }
 })(this, function(npcs, Enemy, async) {
 
-  var loadEnemies = function(store) {
+  var loadEnemies = function() {
 
     var enemies = [
       new Enemy(100, 25),
@@ -24,37 +24,18 @@
       new Enemy(700, 80, -1)
     ];
 
-    async.forEach(
-      enemies,
-      function(npc, callback) {
-        var uuid = npc.uuid;
+    var length = enemies.length;
 
-        // add npc to redis set
-        // and init npc redis state hash
-        store.multi()
-          .sadd('npc', uuid)
-          .hmset(
-            'npc:' + uuid, 
-            'x', npc.x,
-            'y', npc.y,
-            'speed', npc.speed,
-            'vx', npc.vx,
-            'direction', npc.direction
-          )
-          .zadd('expire', Date.now(), 'npc+' + uuid)
-          .exec(function(err, res) {
-            // add npc to server object
-            npcs.global[uuid] = npc;
-            npcs.local.push(uuid);
+    var npc;
+    var uuid;
 
-            // notify async.forEach that function has completed
-            if (typeof callback === 'function') callback();
-          });
-      }, function() {
-        // release lock after all async operations complete
-        store.del('lock:npc', function(err, res) {});
-      }
-    );
+    for (var i = 0; i < length; i++) {
+      npc = enemies[i];
+      uuid = npc.uuid;
+
+      npcs.global[uuid] = npc;
+      npcs.local.push(uuid);
+    }
 
   };
 
