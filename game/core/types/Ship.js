@@ -142,22 +142,16 @@
   Ship.prototype.interpolate = function() {
 
     // entity interpolation
-    var difference = Math.abs(this.state.public.x - this.state.private.x);
+    var dx = Math.abs(this.state.public.x - this.state.private.x);
+    var dy = Math.abs(this.state.public.y - this.state.private.y);
+
+    var difference = Math.max(dx, dy);
 
     // return if no server updates to process
-    if (!this.queue.server.length) return;
-
-    // snap if large difference
-    if (difference < 0.1 || difference > 200) {
-      this.state.private.x = this.state.public.x;
-      return;
-    }
+    if (!this.queue.server.length || difference < 0.1) return;
 
     var x;
-    var vx;
-
-    var from
-    var to;
+    var y;
 
     var count = this.queue.server.length - 1;
 
@@ -168,33 +162,37 @@
       prev = this.queue.server[i];
       next = this.queue.server[i + 1];
 
-      // if client offset time is between points, set from and break
-      if(time.client > prev.time && time.client < next.time) {
-        from = prev;
-        to = next;
-        break;
+      // if client offset time is between points, break
+      if(time.client > prev.time && time.client < next.time) break;
+    }
+
+    if (prev) {
+      // calculate client time percentage between points
+      var timePoint = 0;
+      var difference = prev.time - time.client;
+      var spread = prev.time - time.server;
+      timePoint = difference / spread;
+
+      // interpolated position
+      x = core.lerp(prev.state.x, this.state.public.x, timePoint);
+      y = core.lerp(prev.state.y, this.state.public.y, timePoint);
+
+      if (dx < 100) {
+        // apply smoothing
+        this.state.private.x = core.lerp(this.state.private.x, x, time.delta * core.smoothing);
+      } else {
+        // apply smooth snap
+        this.state.private.x = core.lerp(prev.state.x, x, time.delta * core.smoothing);
+      }
+
+      if (dy < 100) {
+        // apply smoothing
+        this.state.private.y = core.lerp(this.state.private.y, y, time.delta * core.smoothing);
+      } else {
+        // apply smooth snap
+        this.state.private.y = core.lerp(prev.state.y, y, time.delta * core.smoothing);
       }
     }
-
-    // no interpolation from found, snap to most recent state
-    if(!from) {
-      from = to = this.queue.server[this.queue.server.length - 1];
-    }
-
-    // calculate client time percentage between to and from points
-    var timePoint = 0;
-
-    if (from.time !== to.time) {
-      var difference = from.time - time.client;
-      var spread = from.time - to.time;
-      timePoint = difference / spread;
-    }
-
-    // interpolated position
-    x = core.lerp(from.state.x, to.state.x, timePoint);
-
-    // apply smoothing
-    this.state.private.x = core.lerp(this.state.private.x, x, time.delta * core.smoothing);
 
   };
 

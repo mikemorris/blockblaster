@@ -79,16 +79,23 @@
   Missile.prototype.reconcile = function(data) {
 
     // server reconciliation
+    var x;
+    var y;
+
     var dx = 0;
     var dy = 0;
 
     // update reconciled position with client prediction
     // server position plus dead reckoning
+    dx = parseInt(this.state.private.vx * time.delta);
     dy = parseInt(this.state.private.vy * time.delta);
 
+    x = parseInt(data.state.x) + dx;
+    y = parseInt(data.state.y) + dy;
+
     // set reconciled position
-    this.state.private.x = parseInt(data.state.x);
-    this.state.private.y = parseInt(data.state.y) + dy;
+    this.state.private.x = x;
+    this.state.private.y = y;
 
   };
 
