@@ -8,14 +8,6 @@
   var players = {};
   var npcs = {};
 
-  // input sequence id
-  var seq = 0;
-
-  // queue
-  var queue = {};
-  queue.input = [];
-  queue.server = [];
-
   var init = function(client) {
 
     // set methods to run every frame
@@ -120,23 +112,23 @@
 
               if (player.ship.state) {
 
+                // set server state
+                if (player.ship.state.x) {
+                  client_player.ship.state.public.x = parseInt(player.ship.state.x);
+                } else {
+                  player.ship.state.x = client_player.ship.state.public.x;
+                }
+
+                if (player.ship.state.y) {
+                  client_player.ship.state.public.y = parseInt(player.ship.state.y);
+                } else {
+                  player.ship.state.y = client_player.ship.state.public.y;
+                }
+
                 if (uuid === client.uuid) {
                   // reconcile client prediction with server
                   client_player.ship.reconcile(client, player);
                 } else {
-                  // set server state
-                  if (player.ship.state.x) {
-                    client_player.ship.state.public.x = parseInt(player.ship.state.x);
-                  } else {
-                    player.ship.state.x = client_player.ship.state.public.x;
-                  }
-
-                  if (player.ship.state.y) {
-                    client_player.ship.state.public.y = parseInt(player.ship.state.y);
-                  } else {
-                    player.ship.state.y = client_player.ship.state.public.y;
-                  }
-
                   // set timestamp for interpolation
                   player.ship.time = Date.now();
 
@@ -190,7 +182,7 @@
                     }
 
                     if (_.isBoolean(serverMissile.state.isLive)) {
-                      clientMissile.state.public.isLive = serverMissile.state.isLive;
+                      clientMissile.state.private.isLive = clientMissile.state.public.isLive = serverMissile.state.isLive;
                     } else {
                       serverMissile.state.isLive = clientMissile.state.public.isLive;
                     }
@@ -385,9 +377,7 @@
       } else {
 
         // client prediction only for active player
-        player.ship.respondToInput(client, input.pressed, function(input) {
-          // add input to queue, then send to server
-          client.queue.input.push(input);
+        player.ship.respondToInput(input.pressed, function(input) {
           client.socket.emit('command:send', input);
         });
 
@@ -421,8 +411,6 @@
   return {
     players: players,
     npcs: npcs,
-    seq: seq,
-    queue: queue,
     init: init,
     loop: loop,
     pause: pause,

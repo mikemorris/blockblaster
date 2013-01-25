@@ -94,7 +94,7 @@
 
     socket.on('command:send', function(command) {
       // add to server physics queue instead of immeadiately publishing
-      players.global[player.uuid].queue.push(command);
+      players.global[player.uuid].ship.queue.input.push(command);
     });
 
     socket.on('disconnect', function() {

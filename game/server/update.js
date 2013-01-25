@@ -12,96 +12,58 @@
   }
 })(this, function(players, npcs, levels, async, redis, _) {
 
-  var init = function(socket, store) {
+  var init = function(socket) {
 
     // init server full state update loop, fixed time step in milliseconds
     setInterval((function() {
-      this.loop(socket, store);
-    }).bind(this), 1000);
+      full(socket);
+    }), 1000);
 
-    // init server update deltaLoop, fixed time step in milliseconds
+    // init server delta state update loop, fixed time step in milliseconds
     setInterval((function() {
-      this.deltaLoop(socket, store);
-    }).bind(this), 45);
+      delta(socket);
+    }), 45);
 
     return this;
 
   };
 
-  var update = function(socket, data) {
+  var full = function(socket) {
 
-    // server time stamp
-    data.time = Date.now();
-
-    // console.log(data);
-
-    // return delta object to client
-    socket.io.sockets.volatile.emit('state:delta', data);
-
-    // console.log('state:delta', Date.now());
-
-  };
-
-  var loop = function(socket, store) {
-
-    // create data object containing
-    // authoritative state and last processed input id
     var data = {};
     data.players = {};
     data.npcs = {};
 
-    // TODO: get state from redis, not from local
-    // get updated states from redis, then return delta object to client
+    // get full update, emit to clients
     async.parallel([
-      function(callback) { players.state(data, callback); },
-      function(callback) { npcs.state(data, callback); }
+      function(callback) { players.full(data, callback); },
+      function(callback) { npcs.full(data, callback); }
     ], function() {
       data.time = Date.now();
-
-      // console.log(data);
-
       socket.io.sockets.volatile.emit('state:full', data);
-
-      // console.log('state:full', Date.now());
-
-      /*
-      var keys = Object.keys(data.players);
-      var key;
-
-      for (var i = 0; i < keys.length; i++) {
-        key = keys[i];
-        if (data.players[key].ship && data.players[key].ship.missiles) {
-          console.log(Object.keys(data.players[key].ship.missiles));
-          // console.log(data.players[key].ship.missiles);
-        }
-      }
-      */
     });
 
   };
 
-  var deltaLoop = function(socket, store) {
+  var delta = function(socket) {
 
-    // create data object containing
-    // authoritative state and last processed input id
     var data = {};
     data.players = {};
     data.npcs = {};
 
-    // get updated states from redis, then return delta object to client
+    // get delta update, emit to clients
     async.parallel([
-      function(callback) { players.delta(store, data, callback); },
-      function(callback) { npcs.delta(store, data, callback); }
+      function(callback) { players.delta(data, callback); },
+      function(callback) { npcs.delta(data, callback); }
     ], function() {
-      update(socket, data);
+      data.time = Date.now();
+      socket.io.sockets.volatile.emit('state:delta', data);
     });
 
   };
 
   return {
-    init: init,
-    loop: loop,
-    deltaLoop: deltaLoop
+    init: init
   };
 
 });

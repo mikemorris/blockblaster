@@ -29,8 +29,12 @@
 		this.setDefaults();
 		this.loadMissiles();
 
+    // input sequence id
+    this.seq = 0;
+
     // interpolation queue
     this.queue = {};
+    this.queue.input = [];
     this.queue.server = [];
 	};
 
@@ -60,7 +64,7 @@
     this.set(properties);
 	};
 
-	Ship.prototype.respondToInput = function(client, pressed, callback) {
+	Ship.prototype.respondToInput = function(pressed, callback) {
 
     var vector = core.getVelocity(pressed);
     var fireButtonChanged = false;
@@ -79,11 +83,10 @@
 		}
 
     if (this.state.private.vx || pressed.spacebar || fireButtonChanged) {
-
       // create input object
       input = {
         time: Date.now(),
-        seq: client.seq++,
+        seq: this.seq++,
         input: pressed,
         data: {
           speed: this.state.private.speed,
@@ -91,10 +94,39 @@
         }
       };
 
+      // add input to queue, then send to server
+      this.queue.input.push(input);
+
       if (typeof callback === 'function') callback(input);
     }
 
 	};
+
+	Ship.prototype.processInput = function(move) {
+
+    process.nextTick((function() {
+      // calculate delta time vector
+      var vector = core.getVelocity(move.input);
+
+      var vx = parseInt(this.state.private.speed * time.delta * vector.dx);
+      var vy = parseInt(this.state.private.speed * time.delta * vector.dy);
+
+      this.state.private.x += vx;
+      this.state.private.y += vy;
+
+      if(move.input.spacebar) {
+        this.fire();
+      } else {
+        this.fireButtonReleased = true;
+      }
+
+      // if queue empty, stop looping
+      if (!this.queue.input.length) return;
+
+      this.processInput(this.queue.input.shift());
+    }).bind(this));
+
+  };
 
 	Ship.prototype.move = function() {
 
@@ -113,29 +145,24 @@
 
     // bind this inside filter to Ship
     // remove most recent processed move and all older moves from queue
-    var queue = client.queue.input = client.queue.input.filter((function(el, index, array) {
-
-      // loose comparison necessary?
-      if (el.seq == this.ack) {
-        // TODO: moving average?
-        time.latency = (Date.now() - el.time) / 1000;
-      }
-
+    var queue = this.queue.input = this.queue.input.filter((function(el, index, array) {
       return el.seq > this.ack;
-
     }).bind(this));
 
     // update reconciled position with client prediction
     // server position plus delta of unprocessed input
     for (var i = 0; i < queue.length; i++) {
       dx += parseInt(queue[i].data.speed * queue[i].data.vector.dx * time.delta);
+      dy += parseInt(queue[i].data.speed * queue[i].data.vector.dy * time.delta);
     }
 
     // reconciled prediction
     x = parseInt(player.ship.state.x) + dx;
+    y = parseInt(player.ship.state.y) + dy;
 
     // set reconciled position
     this.state.private.x = core.lerp(this.state.private.x, x, time.delta * core.smoothing);
+    this.state.private.y = core.lerp(this.state.private.y, y, time.delta * core.smoothing);
 
   };
 

@@ -14,8 +14,8 @@ var expire = require('./game/server/expire.js').init(socket, channel.store);
 
 // TODO: init server loops inside levels?
 // require server loops
-var physics = require('./game/server/physics').init(socket, channel.store);
-var update = require('./game/server/update').init(socket, channel.store);
+var physics = require('./game/server/physics').init();
+var update = require('./game/server/update').init(socket);
 
 // http config
 var file = new (static.Server)('./public');

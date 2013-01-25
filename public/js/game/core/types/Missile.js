@@ -90,7 +90,6 @@
     dx = parseInt(this.state.private.vx * time.delta);
     dy = parseInt(this.state.private.vy * time.delta);
 
-    // interpolated position
     x = parseInt(data.state.x) + dx;
     y = parseInt(data.state.y) + dy;
 

@@ -10,35 +10,42 @@
   }
 })(this, function(Player, async, redis, _) {
 
-  // TODO: abstract into entities?
-
   // uuid keys, player object values
   var global = {};
 
   // array of uuids
   var local = [];
 
-  var set = function(player, uuid, move) {
+  var full = function(data, callback) {
 
-    // calculate delta time vector
-    var vector = core.getVelocity(move.input);
+    async.forEach(
+      this.local,
+      (function(uuid, callback) {
+        var player = this.global[uuid];
+        data.players[uuid] = player.getState();
 
-    var vx = parseInt(move.data.speed * time.delta * vector.dx);
-    var vy = parseInt(move.data.speed * time.delta * vector.dy);
+        // notify async.forEach that function has completed
+        if (typeof callback === 'function') callback();
+      }).bind(this), function() {
+        // notify calling function that iterator has completed
+        if (typeof callback === 'function') callback();
+      }
+    );
 
-    player.ship.state.private.x += vx;
-    player.ship.state.private.y += vy;
+  };
 
-    if(move.input.spacebar) {
-      player.ship.fire();
-    } else {
-      player.ship.fireButtonReleased = true;
-    }
+  var delta = function(data, callback) {
 
-    // update ack
-    if (move.seq > player.ack) {
-      player.state.private.ack = move.seq;
-    }
+    async.forEach(
+      this.local,
+      (function(uuid, callback) {
+        var player = this.global[uuid];
+        getDelta(data, this.local, uuid, player, callback);
+      }).bind(this), function() {
+        // notify calling function that iterator has completed
+        if (typeof callback === 'function') callback();
+      }
+    );
 
   };
 
@@ -55,48 +62,7 @@
     if (typeof callback === 'function') callback();
   };
 
-  var state = function(data, callback) {
-
-    async.forEach(
-      this.local,
-      (function(uuid, callback) {
-        var player = this.global[uuid];
-
-        data.players[uuid] = player.getState();
-
-        // notify async.forEach that function has completed
-        if (typeof callback === 'function') callback();
-      }).bind(this), function() {
-        // notify calling function that iterator has completed
-        if (typeof callback === 'function') callback();
-      }
-    );
-
-  };
-
-  var delta = function(store, data, callback) {
-
-    async.forEach(
-      this.local,
-      (function(uuid, callback) {
-        // get delta for all players
-        var player = this.global[uuid];
-
-        if (player) {
-          getDelta(store, data, this.local, uuid, player, callback);
-        } else {
-          // add player to global object
-          add(store, data, this.global, uuid, callback);
-        }
-      }).bind(this), function() {
-        // notify calling function that iterator has completed
-        if (typeof callback === 'function') callback();
-      }
-    );
-
-  };
-
-  var getDelta = function(store, data, local, uuid, player, callback) {
+  var getDelta = function(data, local, uuid, player, callback) {
 
     var delta = {};
 
@@ -215,6 +181,7 @@
     );
   };
 
+  /*
   var getMissile = function(store, player, uuid, callback) {
 
     store.hgetall('missile:' + uuid, function(err, res) {
@@ -306,14 +273,14 @@
     });
 
   };
+  */
 
   return {
     global: global,
     local: local,
-    add: add,
-    remove: remove,
-    state: state,
+    full: full,
     delta: delta,
+    remove: remove,
     getDelta: getDelta
   };
 
