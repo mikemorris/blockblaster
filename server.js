@@ -6,13 +6,9 @@ var config = require('./config');
 var channel = require('./game/server/redis').init();
 var socket = require('./game/server/socket').init(app, channel);
 
-// load scene
-// GAME.core.loadScene('levels').loadLevel(1);
-
 // init expire loop
-var expire = require('./game/server/expire.js').init(socket, channel.store);
+var expire = require('./game/server/expire.js').init(channel.store);
 
-// TODO: init server loops inside levels?
 // require server loops
 var physics = require('./game/server/physics').init();
 var update = require('./game/server/update').init(socket);

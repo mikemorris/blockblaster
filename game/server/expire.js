@@ -8,15 +8,15 @@
   }
 })(this, function(npcs, levels) {
 
-  var init = function(socket, store) {
+  var init = function(store) {
     setInterval((function() {
-      this.loop(socket, store);
+      loop(store);
     }).bind(this), 1000);
 
     return this;
   };
 
-  var loop = function(socket, store) {
+  var loop = function(store) {
 
     // if no active npcs, attempt to set lock and loadEnemies
     if (!npcs.local.length) {
@@ -39,8 +39,7 @@
   };
 
   return {
-    init: init,
-    loop: loop
+    init: init
   };
 
 });
