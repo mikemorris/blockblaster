@@ -5,10 +5,11 @@
       require('../core/core'),
       require('../core/time'),
       require('./players'),
-      require('./npcs')
+      require('./npcs'),
+      require('async')
     );
   }
-})(this, function(core, time, players, npcs) {
+})(this, function(core, time, players, npcs, async) {
 
   var init = function() {
     // init physics loop, fixed time step in milliseconds
@@ -20,74 +21,71 @@
   };
 
   var checkCollisions = function(missile) {
-    var keys = Object.keys(npcs.global);
-    var length = keys.length;
+    async.forEach(
+      Object.keys(npcs.global),
+      function(uuid, callback) {
+        var npc = npcs.global[uuid];
 
-    var uuid;
-    var npc;
+        if(core.isCollision(npc, missile)) {
+          missile.explode();
+          npc.destroy();
+        }
 
-    for (var i = 0; i < length; i++) {
-      uuid = keys[i];
-      npc = npcs.global[uuid];
-
-      if(core.isCollision(npc, missile)) {
-        missile.explode();
-        npc.destroy();
+        // notify async.forEach that function has completed
+        if (typeof callback === 'function') callback();
       }
-    }
+    );
   };
 
   var updateMissiles = function(missiles) {
-    var length = missiles.length;
-    var missile;
+    async.forEach(
+      missiles,
+      function(missile, callback) {
+        if(missile.state.private.isLive) {
+          missile.move();
+          checkCollisions(missile);
+        }
 
-    for (var i = 0; i < length; i++) {
-      missile = missiles[i];
-
-      if(missile.state.private.isLive) {
-        missile.move();
-        checkCollisions(missile);
+        // notify async.forEach that function has completed
+        if (typeof callback === 'function') callback();
       }
-    }
+    );
   };
 
   var updateNPCs = function() {
-    var keys = Object.keys(npcs.global);
-    var length = keys.length;
+    async.forEach(
+      Object.keys(npcs.global),
+      function(uuid, callback) {
+        var npc = npcs.global[uuid];
 
-    var uuid;
-    var npc;
+        if(npc.state.private.isDestroyed) {
+          npcs.remove(npcs, uuid);
+        } else {
+          npc.move();
+        }
 
-    for (var i = 0; i < length; i++) {
-      uuid = keys[i];
-      npc = npcs.global[uuid];
-
-      if(npc.state.private.isDestroyed) {
-        npcs.remove(npcs, uuid);
-      } else {
-        npc.move();
+        // notify async.forEach that function has completed
+        if (typeof callback === 'function') callback();
       }
-    }
+    );
   };
 
   var updatePlayers = function() {
-    var keys = Object.keys(players.global);
-    var length = keys.length;
+    async.forEach(
+      Object.keys(players.global),
+      function(uuid, callback) {
+        var player = players.global[uuid];
+ 
+        updateMissiles(player.ship.missiles);
 
-    var uuid;
-    var player;
+        if (player.ship.queue.input.length) {
+          player.ship.processInput(player.ship.queue.input.shift());
+        }
 
-    // set position authoritatively for all players
-    for (var i = 0; i < length; i++) {
-      uuid = keys[i];
-      player = players.global[uuid];
-
-      updateMissiles(player.ship.missiles);
-
-      if (player.ship.queue.input.length) {
-        player.ship.processInput(player.ship.queue.input.shift());
+        // notify async.forEach that function has completed
+        if (typeof callback === 'function') callback();
       }
-    }
+    );
   };
 
   var loop = function() {
