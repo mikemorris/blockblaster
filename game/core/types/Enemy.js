@@ -167,6 +167,41 @@
     }
   };
 
+  Enemy.prototype.getDelta = function(async, _) {
+
+    // save reference to old values and update state
+    // WARN: clone produces shallow copy
+    var prev = this.state.public;
+    var next = this.state.public = _.clone(this.state.private);
+
+    // init delta array for changed keys
+    var deltaKeys = [];
+
+    // iterate over new values and compare to old
+    var keys = Object.keys(next);
+    var length = keys.length;
+    var key;
+
+    for (var i = 0; i < length; i++) {
+      key = keys[i];
+
+      // check for changed values and push key to delta array
+      if (prev[key] !== next[key]) {
+        deltaKeys.push(key);
+      }
+    }
+
+    // set changed values in data object
+    if (deltaKeys.length) {
+      return {
+        uuid: this.uuid,
+        state: _.pick(next, deltaKeys)
+      };
+    }
+
+  };
+
+
   return Enemy;
 
 });

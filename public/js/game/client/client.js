@@ -62,12 +62,8 @@
         if (npc && client.npcs[uuid]) {
           // TODO: if defined on server and client, update state
         } else if (npc) {
-          if (isNaN(npc.state.x) || isNaN(npc.state.y) || isNaN(npc.state.direction)) debugger;
-
           // if defined on server but not on client, create new NPC on client
           client.npcs[uuid] = new Enemy(parseInt(npc.state.x), parseInt(npc.state.y), parseInt(npc.state.direction), uuid);
-          client.npcs[uuid].state.public.x = parseInt(npc.state.x);
-          client.npcs[uuid].state.public.y = parseInt(npc.state.y);
         } else {
           delete client.npcs[uuid];
         }

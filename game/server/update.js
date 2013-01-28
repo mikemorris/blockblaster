@@ -14,12 +14,12 @@
 
   var init = function(socket) {
 
-    // init server full state update loop, fixed time step in milliseconds
+    // init full state update loop, fixed time step in milliseconds
     setInterval((function() {
-      full(socket);
+      state(socket);
     }), 1000);
 
-    // init server delta state update loop, fixed time step in milliseconds
+    // init delta state update loop, fixed time step in milliseconds
     setInterval((function() {
       delta(socket);
     }), 45);
@@ -28,16 +28,16 @@
 
   };
 
-  var full = function(socket) {
+  var state = function(socket) {
 
     var data = {};
     data.players = {};
     data.npcs = {};
 
-    // get full update, emit to clients
+    // get full state, emit to clients
     async.parallel([
-      function(callback) { players.full(data, callback); },
-      function(callback) { npcs.full(data, callback); }
+      function(callback) { players.state(data, callback); },
+      function(callback) { npcs.state(data, callback); }
     ], function() {
       data.time = Date.now();
       socket.io.sockets.volatile.emit('state:full', data);

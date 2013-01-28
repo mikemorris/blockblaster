@@ -16,13 +16,34 @@
   // array of uuids
   var local = [];
 
-  var full = function(data, callback) {
+  var remove = function(server, uuid, callback) {
+    server.local = _.filter(server.local, function(player) {
+      return player !== uuid;
+    });
+
+    if (server.global && server.global[uuid]) {
+      delete server.global[uuid];
+    }
+
+    // notify async.forEach that function has completed
+    if (typeof callback === 'function') callback();
+  };
+
+  var state = function(data, callback) {
 
     async.forEach(
       this.local,
       (function(uuid, callback) {
         var player = this.global[uuid];
-        data.players[uuid] = player.getState();
+        var state;
+
+        if (player) {
+          state = player.getState();
+        }
+
+        if (state) {
+          data.players[uuid] = state;
+        }
 
         // notify async.forEach that function has completed
         if (typeof callback === 'function') callback();
@@ -40,145 +61,24 @@
       this.local,
       (function(uuid, callback) {
         var player = this.global[uuid];
-        getDelta(data, this.local, uuid, player, callback);
+        var delta;
+
+        if (player) {
+          delta = player.getDelta(async, _);
+        }
+
+        if (delta) {
+          data.players[uuid] = delta;
+        }
+
+        // notify async.forEach that function has completed
+        if (typeof callback === 'function') callback();
       }).bind(this), function() {
         // notify calling function that iterator has completed
         if (typeof callback === 'function') callback();
       }
     );
 
-  };
-
-  var remove = function(server, uuid, callback) {
-    server.local = _.filter(server.local, function(player) {
-      return player !== uuid;
-    });
-
-    if (server.global && server.global[uuid]) {
-      delete server.global[uuid];
-    }
-
-    // notify async.forEach that function has completed
-    if (typeof callback === 'function') callback();
-  };
-
-  var getDelta = function(data, local, uuid, player, callback) {
-
-    var delta = {};
-
-    // PLAYER
-    // save reference to old values and update state
-    // WARN: clone produces shallow copy
-    var prev = player.state.public;
-    var next = player.state.public = _.clone(player.state.private);
-
-    // init delta array for changed keys
-    var deltaKeys = [];
-
-    // iterate over new values and compare to old
-    var keys = Object.keys(next);
-    var length = keys.length;
-    var key;
-
-    for (var i = 0; i < length; i++) {
-      key = keys[i];
-
-      // check for changed values and push key to deltaKeys array
-      if (prev[key] !== next[key]) {
-        deltaKeys.push(key);
-      }
-    }
-
-    // set changed values in data object
-    if (deltaKeys.length > 0) {
-      delta.state = _.pick(next, deltaKeys);
-    }
-
-    // SHIP
-    // save reference to old values and update state
-    // WARN: clone produces shallow copy
-    prev = player.ship.state.public;
-    next = player.ship.state.public = _.clone(player.ship.state.private);
-
-    // init delta array for changed keys
-    deltaKeys = [];
-
-    // iterate over new values and compare to old
-    keys = Object.keys(next);
-    length = keys.length;
-    key;
-
-    for (var j = 0; j < length; j++) {
-      key = keys[j];
-
-      // check for changed values and push key to deltaKeys array
-      if (prev[key] !== next[key]) {
-        deltaKeys.push(key);
-      }
-    }
-
-    // set changed values in data object
-    if (deltaKeys.length) {
-      delta.ship = {};
-      delta.ship.state = _.pick(next, deltaKeys);
-    }
-
-    // MISSILES
-    // init missiles
-    var missiles = {};
-
-    // iterate over missiles
-    async.forEach(
-      player.ship.missiles,
-      function(missile, callback) {
-        // save reference to old values and update state
-        // WARN: clone produces shallow copy
-        var prev = missile.state.public;
-        var next = missile.state.public = _.clone(missile.state.private);
-
-        // init delta array for changed keys
-        var deltaKeys = [];
-
-        // iterate over new values and compare to old
-        var keys = Object.keys(next);
-        var length = keys.length;
-        var key;
-
-        for (var k = 0; k < length; k++) {
-          key = keys[k];
-
-          // check for changed values and push key to deltaKeys array
-          if (prev[key] !== next[key]) {
-            deltaKeys.push(key);
-          }
-        }
-
-        // set changed values in data object
-        if (deltaKeys.length) {
-          var deltaMissile = {};
-          deltaMissile.state = _.pick(next, deltaKeys);
-          missiles[missile.uuid] = deltaMissile;
-        }
-
-        // notify async.forEach that iterator has completed
-        if (typeof callback === 'function') callback();
-      },
-      function() {
-        if (Object.keys(missiles).length) {
-          delta.ship = delta.ship || {};
-          delta.ship.missiles = missiles;
-        }
-
-        // set changed values in data object
-        if (Object.keys(delta).length) {
-          delta.time = Date.now();
-          data.players[uuid] = delta;
-        }
-
-        // notify async that iterator has completed
-        if (typeof callback === 'function') callback();
-      }
-    );
   };
 
   /*
@@ -278,10 +178,9 @@
   return {
     global: global,
     local: local,
-    full: full,
+    state: state,
     delta: delta,
-    remove: remove,
-    getDelta: getDelta
+    remove: remove
   };
 
 });
